@@ -11,9 +11,9 @@
     <div v-show="!loadingInventory && !savingInventory">
       <div v-show="currentPage==0">
         <!-- buttons -->
-        <div class="row q-pb-md q-pt-0 q-mt-0">
+        <div class="row q-mb-md q-pb-md q-mt-0">
           <div class="col-6 text-left q-pl-0 q-ml-0">
-            <q-btn @click="cancelChanges" color="secondary" label="Cancel " />
+            <q-btn @click="cancelChanges" class="bg-green-2" label="Cancel " />
           </div>
           <div class="col-6 text-right q-pr-0 q-mr-0">
             <q-btn @click="nextPage" color="primary" label="Next >" />
@@ -24,7 +24,7 @@
           <div class="col-1 col-xs-1 text-bold">
             Ch
           </div>
-          <div class="col-5 col-xs-3 text-bold">
+          <div class="col-7 col-xs-7 text-bold">
             Product
           </div>
           <div class="col-2 col-xs-2 q-pr-md text-bold q-text-danger" style="text-align: right;">
@@ -34,17 +34,20 @@
             Stock after waste
           </div>
         </div>
+
         <!-- Inventory rows-->
         <div
           v-for="inventoryLine in inventoryLines"
           id="inventoryLine.channel"
           class="row"
-          :class="inventoryLine.odd ? 'bg-success' : ''"
+          :class="inventoryLine.odd ? 'bg-green-1' : ''"
         >
-          <div class="col-1 col-xs-1 q-pt-md q-pr-xs">
+          <!-- Category header -->
+          <div  v-if="machine.isfridge && inventoryLine.category !== ''" class="q-pt-md col-12 bg-white"><b>{{ inventoryLine.category }}</b></div>
+          <div class="col-1 col-xs-1 q-pt-md q-pr-xs q-pl-xs">
             {{ inventoryLine.channel }}
           </div>
-          <div class="col-5 col-xs-3 q-pt-md">
+          <div class="col-7 col-xs-7 q-pt-md">
             {{ inventoryLine.productName }}
           </div>
           <div class="col-2 col-xs-2 q-pr-md">
@@ -54,9 +57,9 @@
             <q-input v-model="inventoryLine.newBalance" @change="setDirty(inventoryLine);updateSpoil(inventoryLine)" input-style="text-align: right" type="text" hide-bottom-space/>
           </div>
         </div>
-        <div class="row q-pb-md q-pt-0 q-mt-0">
+        <div class="row q-pb-md q-pt-md q-mt-md">
           <div class="col-6 text-left q-pl-0 q-ml-0">
-            <q-btn @click="cancelChanges" color="secondary" label="Cancel " />
+            <q-btn @click="cancelChanges" class="bg-green-2" label="Cancel " />
           </div>
           <div class="col-6 text-right q-pr-0 q-mr-0">
             <q-btn @click="nextPage" color="primary" label="Next >" />
@@ -65,9 +68,9 @@
       </div>
       <!-- Second page - refill and outgoing balance -->
       <div v-show="currentPage==1">
-        <div class="row q-pb-md q-pt-0 q-mt-0">
+        <div class="row q-mb-md q-pb-md q-mt-0">
           <div class="col-6 text-left q-pl-0 q-ml-0">
-            <q-btn @click="cancelChanges" color="secondary" label="Cancel " />
+            <q-btn @click="cancelChanges" class="bg-green-2" label="Cancel " />
           </div>
           <div class="col-6 text-right q-pr-0 q-mr-0">
             <q-btn @click="saveChanges" color="primary" label="Save" />
@@ -77,35 +80,42 @@
           <div class="col-1 col-xs-1 text-bold">
             Ch
           </div>
-          <div class="col-5 col-xs-3 text-bold">
+          <div class="col-9 col-xs-9 text-bold">
             Product
           </div>
-          <div class="col-2 col-xs-2 q-pr-md text-bold q-text-success" style="text-align: right;">
+          <div class="col-2 col-xs-2 text-bold q-text-success" style="text-align: right;">
             Refill
           </div>
         </div>
         <div
           v-for="inventoryLine in inventoryLines"
           id="inventoryLine.channel"
-          class="row"
-          :class="inventoryLine.odd ? 'bg-success' : ''"
+          class="row q-mb-md"
+          :class="inventoryLine.odd ? 'bg-green-1' : ''"
         >
-          <div class="col-1 col-xs-1 q-pt-md q-pr-xs">
+          <!-- Category header -->
+          <div  v-if="machine.isfridge && inventoryLine.category !== ''" class="q-pt-md col-12 bg-white"><b>{{ inventoryLine.category }}</b></div>
+          <div class="col-1 col-xs-1 q-pt-md">
             {{ inventoryLine.channel }}
           </div>
-          <div class="col-5 col-xs-3 q-pt-md">
-            {{ inventoryLine.productName }}
+          <div class="col-9 col-xs-9 q-py-0 q-pr-md">
+            <q-select
+              class="q-py-0 q-my-0"
+              v-model="inventoryLine.productId"
+              :options="menuItemProductOptions"
+              :label="void 0"
+              :display-value="menuItemProductOptions.find(m => m.value === inventoryLine.productId) ? menuItemProductOptions.find(m => m.value === inventoryLine.productId).label : void 0"
+              @change="setDirty(inventoryLine)"
+            >
+            </q-select>
           </div>
-          <!-- div class="col-1 col-xs-2 q-pt-md q-pr-md " style="text-align: center">
-            {{ inventoryLine.balance }}
-          </div -->
-          <div class="col-2 col-xs-2 q-pr-md">
+          <div class="col-2 col-xs-2">
             <q-input v-model="inventoryLine.resupply" @change="setDirty(inventoryLine)" input-style="text-align: right" type="text" hide-bottom-space/>
           </div>
         </div>
-        <div class="row q-pb-md q-pt-0 q-mt-0">
+        <div class="row q-pb-md q-pt-md q-mt-md">
           <div class="col-6 text-left q-pl-0 q-ml-0">
-            <q-btn @click="cancelChanges" color="secondary" label="Cancel " />
+            <q-btn @click="cancelChanges" class="bg-green-2" label="Cancel " />
           </div>
           <div class="col-6 text-right q-pr-0 q-mr-0">
             <q-btn @click="saveChanges" color="primary" label="Save" />
@@ -118,6 +128,16 @@
 import { ref, watch } from 'vue'
 import gql from 'graphql-tag'
 import { useQuery, useMutation } from '@vue/apollo-composable'
+
+const GET_MACHINE = gql`
+  query MachineById($machineByIdId: ID!) {
+    machineById(id: $machineByIdId) {
+      location
+      isfridge
+      channels
+    }
+  }
+`;
 
 const GET_MACHINE_MENU_ITEMS = gql`
   query MenuItemsByMachineId($input: MenuItemsByMachineIdInput!) {
@@ -141,6 +161,7 @@ const GET_INVENTORY_QUERY = gql`
         balance
         productId
         product {
+          category
           texts {
             name
           }
@@ -173,14 +194,21 @@ export default {
     driverId: String,
     machineId: String,
     machineName: String,
-    // clearMachine: () => void(0)
   },
   setup(props) {
     const currentPage = ref(0);
     const savingInventory = ref(false);
     const machineId = props.machineId;
     const driverId = props.driverId;
+    const machine = ref({})
     const inventoryLines = ref([]);
+    const menuItemProducts = ref([]);
+    const menuItemProductOptions = ref([]);
+    const { result: machineResult, loading: loadingMachine, error: errorMachine, refetch: refetchMachine } = useQuery(
+      GET_MACHINE,
+      { machineByIdId: machineId }
+    );
+
     const { result: menuItemsResult, loading: loadingMenuItems, error: erroMenuItems, refetch: refetchMenuItems } = useQuery(
       GET_MACHINE_MENU_ITEMS,
       { input: { machineId: machineId, includeUnavailable: true  },
@@ -193,25 +221,28 @@ export default {
     const { mutate: updateMachineAllRefill } = useMutation(UPDATE_MACHINE_ALL_REFILL);
 
     // Watch for changes in machineId prop
-    watch(() => props.machineId, (newMachineId) => {
-      refetch({ machineId: newMachineId });
-      refetchMenuItems({ input: { machineId: newMachineId }})
+    watch(() => props.machineId, async(newMachineId) => {
+      await refetchMachine({ machineByIdId: newMachineId });
+      await refetch({ machineId: newMachineId });
+      await refetchMenuItems({ input: { machineId: newMachineId }})
     });
 
     // Watch for changes in the query result
     let odd = false;
-    let menuItemProducts = [];
+    
     watch(() => inventoryResult.value, (newResult) => {
+      let thiscat = '';
       if (!loadingInventory.value && newResult) {
-        console.log(newResult);
         inventoryLines.value = newResult.stockTransactionV2machineInventory.channelInfo.filter(r => r.product)
           .map((r) => {
             odd = !odd;
-            return {
+            if (!r.product.texts.length) return false;
+            const res = {
               machineId: props.machineId,
               channel: r.channel,
               productId: r.productId,
-              productName: r.product.texts[0].name,
+              productName: r.product.texts[0].name ? r.product.texts[1].name :  `${r.productId} * MISSING *`,
+              category: r.product.category !== thiscat ? r.product.category : '',
               balance: r.balance,
               spoil: 0,
               resupply: 0,
@@ -219,17 +250,31 @@ export default {
               odd: odd,
               dirty: false,
             };
+            thiscat = r.product.category;
+            return res;
           })
-          .sort((a, b) => parseInt(a.channel) - parseInt(b.channel));
       }
     });
-    watch(() => menuItemsResult.value, (newResult) => {
-      console.log(newResult)
-      menuItemProducts = newResult.menuItemsByMachineId.map( m => m.product.id );
+    watch(() => menuItemsResult.value, (newMenuItems) => {
+      if (!loadingMenuItems.value && newMenuItems) {
+        menuItemProducts.value = newMenuItems.menuItemsByMachineId.map( m => m.product.id );
+        menuItemProductOptions.value = newMenuItems.menuItemsByMachineId.map((m) => {
+          return {
+            value: m.product.id,
+            label: m.product.texts[0].name
+          }
+        })
+      }
+    })
+    watch(() => machineResult.value, (newMachine) => {
+      if (!loadingMachine.value && newMachine) {
+        machine.value = newMachine.machineById;
+      }
     })
     refetch({ machineId })
     refetchMenuItems({ input: { machineId: machineId }})
     return {
+      machine,
       savingInventory,
       loadingInventory,
       errorInventory,
@@ -240,6 +285,7 @@ export default {
       inventoryResult,
       driverId,
       menuItemProducts,
+      menuItemProductOptions
     };
   },
   methods: {

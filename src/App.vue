@@ -115,7 +115,8 @@ export default {
     // Populate machine options
     watch(() => machines.value, (newValue, oldValue) => {
       if (!loadingMachines.value && newValue) {
-        const bah = newValue.machines.filter( m => m.id === '44cce2b4-a3d5-4f6f-bede-894ecaffdc3e');
+        // const bah = newValue.machines.filter( m => m.id === '44cce2b4-a3d5-4f6f-bede-894ecaffdc3e');
+        const bah = newValue.machines;
         machineOptions.value = bah.map((r) => { // newValue.machines.map((r) => {
           return { value: r.id, label: r.location };
         })
@@ -134,9 +135,7 @@ export default {
   },
   methods: {
     clearMachine() {
-      console.log(this.machine)
       this.machine = null;
-      console.log(this.machine)
     },
   }
 }
