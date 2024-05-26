@@ -28,13 +28,20 @@ const httpLink = new HttpLink({
 const apolloClient = new ApolloClient({
   cache,
   link: httpLink,
+  defaultOptions: {
+    watchQuery: {
+      fetchPolicy: 'network-only'
+    },
+    query: {
+      fetchPolicy: 'network-only'
+    }
+  }
 })
 
 const app = createApp({
   setup () {
     provide(DefaultApolloClient, apolloClient)
   },
-
   render: () => h(App),
 });
 
