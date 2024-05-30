@@ -366,22 +366,22 @@ export default {
       this.savingInventory = true;
       for (const line of this.inventoryLines) {
         if (line.spoilDirty) {
-          const spoil = parseInt(line.spoil) | 0;
-          const newBalance = parseInt(line.newBalance) | 0;
+          const spoil = parseInt(line.spoil) || 0;
+          const newBalance = parseInt(line.newBalance) || 0;
           const input = {
             channel: line.channel,
             productId: line.productId,
-            spoil: parseInt(spoil),
-            balance: parseInt(newBalance),
+            spoil: spoil,
+            balance: newBalance,
           }
           spoilAndInventoryLines.push(input)
         }
         if (line.resupplyDirty) {
-          const resupply = parseInt(line.resupply) | 0;
+          const resupply = parseInt(line.resupply) || 0;
           const input = {
             channel: line.channel,
             productId: line.productId,
-            refill: parseInt(resupply),
+            refill: resupply,
           }
           resupplyLines.push(input);
         }
