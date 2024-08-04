@@ -25,11 +25,14 @@
             <div class="col-1 col-xs-1 text-bold">
               Ch
             </div>
-            <div class="col-7 col-xs-7 text-bold">
+            <div class="col-5 col-xs-5 text-bold">
               Product
             </div>
             <div class="col-2 col-xs-2 q-pr-md text-bold q-text-danger" style="text-align: right;">
               Waste
+            </div>
+            <div class="col-2 col-xs-2 q-pr-md text-bold q-text-danger" style="text-align: right;">
+              Move out
             </div>
             <div class="col-2 col-xs-2 text-bold" style="text-align: right;">
               Stock after waste
@@ -48,11 +51,14 @@
             <div class="col-1 col-xs-1 q-pt-md q-pr-xs q-pl-xs">
               {{ inventoryLine.channel }}
             </div>
-            <div class="col-7 col-xs-7 q-pt-md">
+            <div class="col-5 col-xs-5 q-pt-md">
               {{ inventoryLine.productName }}
             </div>
             <div class="col-2 col-xs-2 q-pr-md">
-              <q-input v-model="inventoryLine.spoil" @change="setSpoilDirty(inventoryLine);updateBalance(inventoryLine)" input-style="text-align: right" type="text" hide-bottom-space/>
+              <q-input v-model="inventoryLine.spoil" @change="setSpoilDirty(inventoryLine);updateBalanceSpoil(inventoryLine)" input-style="text-align: right" type="text" hide-bottom-space/>
+            </div>
+            <div class="col-2 col-xs-2 q-pr-md">
+              <q-input v-model="inventoryLine.moveout" @change="setSpoilDirty(inventoryLine);updateBalanceMoveOut(inventoryLine)" input-style="text-align: right" type="text" hide-bottom-space/>
             </div>
             <div class="col-2 col-xs-2">
               <q-input v-model="inventoryLine.newBalance" @change="setSpoilDirty(inventoryLine);updateSpoil(inventoryLine)" input-style="text-align: right" type="text" hide-bottom-space/>
@@ -81,11 +87,14 @@
             <div class="col-1 col-xs-1 text-bold">
               Ch
             </div>
-            <div class="col-9 col-xs-9 text-bold">
+            <div class="col-7 col-xs-7 text-bold">
               Product
             </div>
             <div class="col-2 col-xs-2 text-bold q-text-success" style="text-align: right;">
               Refill
+            </div>
+            <div class="col-2 col-xs-2 text-bold q-text-success" style="text-align: right;">
+              Move in
             </div>
           </div>
           <div
@@ -99,7 +108,7 @@
             <div class="col-1 col-xs-1 q-pt-md">
               {{ inventoryLine.channel }}
             </div>
-            <div class="col-9 col-xs-9 q-py-0 q-pr-md">
+            <div class="col-7 col-xs-7 q-py-0 q-pr-md">
               <q-select
                 class="q-py-0 q-my-0"
                 v-model="inventoryLine.productId"
@@ -112,6 +121,9 @@
             </div>
             <div class="col-2 col-xs-2">
               <q-input v-model="inventoryLine.resupply" @change="setResupplyDirty(inventoryLine)" input-style="text-align: right" type="text" hide-bottom-space/>
+            </div>
+            <div class="col-2 col-xs-2">
+              <q-input v-model="inventoryLine.movein" @change="setResupplyDirty(inventoryLine)" input-style="text-align: right" type="text" hide-bottom-space/>
             </div>
           </div>
           <div class="row q-pb-md q-pt-md q-mt-md">
@@ -289,8 +301,11 @@ export default {
               category: r.product.category !== thiscat ? r.product.category : '',
               balance: r.balance,
               spoil: 0,
+              moveout: 0,
               resupply: 0,
+              movein: 0,
               newBalance: r.balance,
+              oldBalance: r.balance,
               odd: odd,
               dirty: false,
               spoilDirty: false,
@@ -340,8 +355,15 @@ export default {
     };
   },
   methods: {
-    updateBalance(inventoryLine) {
-      let bal = inventoryLine.newBalance - inventoryLine.spoil;
+    updateBalanceSpoil(inventoryLine) {
+      console.log('updateBalance', inventoryLine)
+      let bal = parseInt(inventoryLine.oldBalance) - (parseInt(inventoryLine.spoil) + parseInt(inventoryLine.moveout));
+      if (bal <0) { bal = 0; }
+      inventoryLine.newBalance = bal;
+    },
+    updateBalanceMoveOut(inventoryLine) {
+      console.log('updateBalance', inventoryLine)
+      let bal = parseInt(inventoryLine.oldBalance) - (parseInt(inventoryLine.spoil) + parseInt(inventoryLine.moveout));
       if (bal <0) { bal = 0; }
       inventoryLine.newBalance = bal;
     },
@@ -367,21 +389,25 @@ export default {
       for (const line of this.inventoryLines) {
         if (line.spoilDirty) {
           const spoil = parseInt(line.spoil) || 0;
+          const moveout = parseInt(line.moveout) || 0;
           const newBalance = parseInt(line.newBalance) || 0;
           const input = {
             channel: line.channel,
-            productId: line.productId,
+            productId: line.productId,  
             spoil: spoil,
+            moveout: moveout,
             balance: newBalance,
           }
           spoilAndInventoryLines.push(input)
         }
         if (line.resupplyDirty) {
           const resupply = parseInt(line.resupply) || 0;
+          const movein = parseInt(line.movein) || 0;
           const input = {
             channel: line.channel,
             productId: line.productId,
             refill: resupply,
+            movein: movein,
           }
           resupplyLines.push(input);
         }
