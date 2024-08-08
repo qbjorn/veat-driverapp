@@ -281,11 +281,23 @@ export default {
         const productsSorted = sortedGroups.flatMap(group => group.map((r) => {
             odd = !odd;
             if (!r.product.texts.length) return false;
+            if (!r.product.texts.length) return false;
+            let productText = r.product.texts[0].name;
+            console.log('Text 0', r.product.texts[0].name)
+            if (!productText || productText == '') {
+              console.log('Text 1', r.product.texts[1].name)
+              productText = r.product.texts[1].name;
+              console.log('Text 1',productText);
+            }
+            if (!productText || productText == '') {
+              console.log('Text missing', r.product.id)
+              `${r.product.id} * MISSING *`
+            }
             const res = {
               machineId: props.machineId,
               channel: r.channel,
               productId: r.productId,
-              productName: r.product.texts[0].name ? (r.product.texts[1] ? r.product.texts[1].name : `${r.productId} * MISSING *`) : `${r.productId} * MISSING *`,
+              productName: productText,
               category: r.product.category !== thiscat ? r.product.category : '',
               balance: r.balance,
               spoil: 0,
