@@ -321,14 +321,14 @@ export default {
         menuItemProducts.value = newMenuItems.menuItemsByMachineId.map( m => m.product.id );
         menuItemProductOptions.value = newMenuItems.menuItemsByMachineId.map((m) => {
          let productText = m.product.texts[0].name;
-          console.log('Text 0', m.product.texts[0].name)
+          // console.log('Text 0', m.product.texts[0].name)
           if (!productText || productText == '') {
-            console.log('Text 1', m.product.texts[1].name)
+            // console.log('Text 1', m.product.texts[1].name)
             productText = m.product.texts[1].name;
             console.log('Text 1',productText);
           }
           if (!productText || productText == '') {
-            console.log('Text missing', m.product.id)
+            // console.log('Text missing', m.product.id)
             `${m.product.id} * MISSING *`
           }
           return {
