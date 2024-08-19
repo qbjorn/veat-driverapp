@@ -9,9 +9,17 @@
         </h5>
         
       </div>
-      <div v-if="loadingInventory">Loading inventory...</div>
+      <div v-if="loadingInventory">
+        <q-spinner
+          class="mr-2"
+          color="primary"
+          size="3em"
+          :thickness="2"
+        />Loading inventory...
+      </div>
       <div v-if="savingInventory">
         <q-spinner
+          class="mr-2"
           color="primary"
           size="3em"
           :thickness="2"
@@ -55,11 +63,11 @@
             :class="inventoryLine.odd ? 'bg-green-1' : ''"
           >
             <!-- Category header -->
-            <div  v-if="inventoryLine.groupheader !== ''" class="q-pt-md col-12 bg-white"><b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b></div>
+            <div v-if="inventoryLine.groupheader !== ''" class="q-pt-md col-12 bg-white"><b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b></div>
             <div v-if="inventoryLine.balance > 0 || showEmptyChannels" class="col-1 col-xs-1 q-pt-md q-pr-xs q-pl-xs">
               {{ inventoryLine.channel }}
             </div>
-            <div class="col-5 col-xs-5 q-pt-md">
+            <div v-if="inventoryLine.balance > 0 || showEmptyChannels" class="col-5 col-xs-5 q-pt-md">
               {{ inventoryLine.productName }}
             </div>
             <div v-if="inventoryLine.balance > 0 || showEmptyChannels" class="col-2 col-xs-2 q-pr-md">
@@ -112,8 +120,8 @@
             :class="inventoryLine.odd ? 'bg-green-1' : ''"
           >
             <!-- Category header -->
-            <div  v-if="inventoryLine.groupheader !== ''" class="q-pt-md col-12 bg-white"><b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b></div>
-            <div class="col-1 col-xs-1 q-pt-md">
+            <div v-if="inventoryLine.groupheader !== ''" class="q-pt-md col-12 bg-white"><b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b></div>
+            <div v-if="inventoryLine.balance > 0 || showEmptyChannels" class="col-1 col-xs-1 q-pt-md">
               {{ inventoryLine.channel }}
             </div>
             <div v-if="inventoryLine.balance > 0 || showEmptyChannels" class="col-7 col-xs-7 q-py-0 q-pr-md">
@@ -139,6 +147,9 @@
               <q-btn @click="cancelChanges" class="bg-green-2" label="Cancel " />
             </div>
             <div class="col-6 text-right q-pr-0 q-mr-0">
+              <q-btn class="bg-green-2 q-mr-md" @click="addingChannel = true" :disabled="savingInventory" label="Add channel" />
+            <!-- </div>
+            <div class="col-4 text-right q-pr-0 q-mr-0"> -->
               <q-btn @click="saveChanges" :disabled="savingInventory" color="primary" label="Save" />
             </div>
           </div>
@@ -157,6 +168,28 @@
           <q-card-actions>
             <div class="col-12 text-right q-pr-0 q-mr-0">
               <q-btn @click="saveError=false" color="primary" label="OK" v-close-popup/>
+            </div>
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
+      <q-dialog v-model="addingChannel">
+        <q-card>
+          <q-card-section>
+            <div class="text-h6">Add channel</div>
+          </q-card-section>
+          <q-card-section>
+            <div v-if="addChannelError" class="text-negative">{{ addChannelMessage }}</div>
+          </q-card-section>
+          <q-card-section class="q-pt-none">
+            <q-input v-model="newChannel" label="Channel" type="number" />
+          </q-card-section>
+
+          <q-card-actions>
+            <div class="col-6 text-left q-pr-0 q-mr-0">
+              <q-btn @click="addingChannel=false" class="bg-green-2" label="Cancel" v-close-popup/>
+            </div>
+            <div class="col-6 text-right q-pr-0 q-mr-0">
+              <q-btn @click="addChannel" color="primary" label="Add"/>
             </div>
           </q-card-actions>
         </q-card>
@@ -253,6 +286,55 @@ export default {
     const menuItemProductOptions = ref([]);
     const saveError = ref(false);
     const saveMessage = ref('')
+    const addingChannel = ref(false);
+    const newChannel = ref(0);
+    const addChannelError = ref(false);
+    const addChannelMessage = ref('');
+    const addChannel = () => {
+      addChannelMessage.value = '';
+      if (newChannel) {
+        inventoryLines.value.forEach((line) => {
+          // console.log(typeof line.channel, typeof newChannel.value);
+          const newChannelNumber = parseInt(newChannel.value);
+          if (line.channel === newChannelNumber) {
+            addChannelError.value = true;
+            addChannelMessage.value = 'Channel already exists';
+          }
+        });
+        if (!addChannelError.modelValue) {
+          const machineHasChannel = machine.value.channels.includes(newChannel.value);
+          if (!machineHasChannel) {
+            addChannelError.value = true;
+            addChannelMessage.value = 'Channel does not exist in machine';
+          }
+        }
+        if (!addChannelError.value) {
+          inventoryLines.value.push({
+            machineId: props.machineId,
+            channel: newChannel.value,
+            productId: '',
+            productName: '',
+            category: '',
+            origin: '',
+            groupheader: '',
+            balance: 0,
+            spoil: 0,
+            moveout: 0,
+            resupply: 0,
+            movein: 0,
+            newBalance: 0,
+            oldBalance: 0,
+            odd: false,
+            dirty: false,
+            spoilDirty: false,
+            resupplyDirty: false,
+          });
+          addingChannel.value = false;
+          addChannelMessage.value = '';
+          showEmptyChannels.value = true;
+        }
+      }
+    }
     const { result: machineResult, loading: loadingMachine, error: errorMachine, refetch: refetchMachine } = useQuery(
       GET_MACHINE,
       { machineByIdId: machineId }
@@ -282,7 +364,7 @@ export default {
     watch(() => inventoryResult.value, (newResult) => {
       let thisgroupheader = '';
       if (!loadingInventory.value && newResult) {
-        console.log({newResult})
+        // console.log({newResult})
         const products = newResult.stockTransactionV2machineInventory.channelInfo.filter(r => r.product)
         // Group products by category, origin
         const grouped = products.reduce((acc, r) => {
@@ -300,7 +382,7 @@ export default {
           .map(groupKey => grouped[groupKey]);
         // Sort each group by channel in ascending order
         sortedGroups.forEach((group) => {
-          console.log(group);
+          // console.log(group);
           group.sort((a, b) => a.channel - b.channel);
         })
         // Map over sorted groups to get the final array with the required structure
@@ -380,18 +462,24 @@ export default {
       inventoryResult,
       driverId,
       menuItemProducts,
-      menuItemProductOptions
+      menuItemProductOptions,
+      addingChannel,
+      newChannel,
+      addChannel,
+      addingChannel,
+      addChannelError,
+      addChannelMessage,
     };
   },
   methods: {
     updateBalanceSpoil(inventoryLine) {
-      console.log('updateBalance', inventoryLine)
+      // console.log('updateBalance', inventoryLine)
       let bal = parseInt(inventoryLine.oldBalance) - (parseInt(inventoryLine.spoil) + parseInt(inventoryLine.moveout));
       if (bal <0) { bal = 0; }
       inventoryLine.newBalance = bal;
     },
     updateBalanceMoveOut(inventoryLine) {
-      console.log('updateBalance', inventoryLine)
+      // console.log('updateBalance', inventoryLine)
       let bal = parseInt(inventoryLine.oldBalance) - (parseInt(inventoryLine.spoil) + parseInt(inventoryLine.moveout));
       if (bal <0) { bal = 0; }
       inventoryLine.newBalance = bal;
