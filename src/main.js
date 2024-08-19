@@ -21,7 +21,7 @@ const uri = process.env.NODE_ENV === 'development' ?
     'http://localhost:9000/graphql' :
     process.env.VUE_APP_MODE === 'stage' ?
       'https://stage.veat.se/graphql/' :
-      'https://stage.veat.se/graphql/';
+      'https://veat.se/graphql/';
 const httpLink = new HttpLink({
   uri,
   fetch: (uri, options) => {

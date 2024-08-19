@@ -5,10 +5,18 @@
           class="q-pt-1 q-pb-1 q-mt-1 q-mb-1 text-primary"
         >
           {{ `${currentPage==0?'Waste':'Refill'} for ${machineName} ${machine.isfridge===1?'(fridge)':'(machine)'}` }}
+          <span style="float: right">Show empty channels<q-checkbox v-model="showEmptyChannels" /></span>
         </h5>
+        
       </div>
       <div v-if="loadingInventory">Loading inventory...</div>
-      <div v-if="savingInventory">Saving inventory...</div>
+      <div v-if="savingInventory">
+        <q-spinner
+          color="primary"
+          size="3em"
+          :thickness="2"
+        />Saving inventory...
+      </div>
       <div v-show="!loadingInventory && !savingInventory">
         <div v-show="currentPage==0">
           <!-- buttons -->
@@ -47,20 +55,20 @@
             :class="inventoryLine.odd ? 'bg-green-1' : ''"
           >
             <!-- Category header -->
-            <div  v-if="machine.isfridge && inventoryLine.category !== ''" class="q-pt-md col-12 bg-white"><b>{{ inventoryLine.category }}</b></div>
-            <div class="col-1 col-xs-1 q-pt-md q-pr-xs q-pl-xs">
+            <div  v-if="inventoryLine.groupheader !== ''" class="q-pt-md col-12 bg-white"><b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b></div>
+            <div v-if="inventoryLine.balance > 0 || showEmptyChannels" class="col-1 col-xs-1 q-pt-md q-pr-xs q-pl-xs">
               {{ inventoryLine.channel }}
             </div>
             <div class="col-5 col-xs-5 q-pt-md">
               {{ inventoryLine.productName }}
             </div>
-            <div class="col-2 col-xs-2 q-pr-md">
+            <div v-if="inventoryLine.balance > 0 || showEmptyChannels" class="col-2 col-xs-2 q-pr-md">
               <q-input v-model="inventoryLine.spoil" @change="setSpoilDirty(inventoryLine);updateBalanceSpoil(inventoryLine)" input-style="text-align: right" type="text" hide-bottom-space/>
             </div>
-            <div class="col-2 col-xs-2 q-pr-md">
+            <div v-if="inventoryLine.balance > 0 || showEmptyChannels" class="col-2 col-xs-2 q-pr-md">
               <q-input v-model="inventoryLine.moveout" @change="setSpoilDirty(inventoryLine);updateBalanceMoveOut(inventoryLine)" input-style="text-align: right" type="text" hide-bottom-space/>
             </div>
-            <div class="col-2 col-xs-2">
+            <div v-if="inventoryLine.balance > 0 || showEmptyChannels" class="col-2 col-xs-2">
               <q-input v-model="inventoryLine.newBalance" @change="setSpoilDirty(inventoryLine);updateSpoil(inventoryLine)" input-style="text-align: right" type="text" hide-bottom-space/>
             </div>
           </div>
@@ -104,11 +112,11 @@
             :class="inventoryLine.odd ? 'bg-green-1' : ''"
           >
             <!-- Category header -->
-            <div  v-if="machine.isfridge === 1 && inventoryLine.category !== ''" class="q-pt-md col-12 bg-white"><b>{{ inventoryLine.category }}</b></div>
+            <div  v-if="inventoryLine.groupheader !== ''" class="q-pt-md col-12 bg-white"><b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b></div>
             <div class="col-1 col-xs-1 q-pt-md">
               {{ inventoryLine.channel }}
             </div>
-            <div class="col-7 col-xs-7 q-py-0 q-pr-md">
+            <div v-if="inventoryLine.balance > 0 || showEmptyChannels" class="col-7 col-xs-7 q-py-0 q-pr-md">
               <q-select
                 class="q-py-0 q-my-0"
                 v-model="inventoryLine.productId"
@@ -119,10 +127,10 @@
               >
               </q-select>
             </div>
-            <div class="col-2 col-xs-2">
+            <div v-if="inventoryLine.balance > 0 || showEmptyChannels" class="col-2 col-xs-2">
               <q-input v-model="inventoryLine.resupply" @change="setResupplyDirty(inventoryLine)" input-style="text-align: right" type="text" hide-bottom-space/>
             </div>
-            <div class="col-2 col-xs-2">
+            <div v-if="inventoryLine.balance > 0 || showEmptyChannels" class="col-2 col-xs-2">
               <q-input v-model="inventoryLine.movein" @change="setResupplyDirty(inventoryLine)" input-style="text-align: right" type="text" hide-bottom-space/>
             </div>
           </div>
@@ -196,6 +204,7 @@ const GET_INVENTORY_QUERY = gql`
           texts {
             name
           }
+          origin
         }
       }
     }
@@ -233,6 +242,7 @@ export default {
     }
   },
   setup(props) {
+    const showEmptyChannels = ref(false)
     const currentPage = ref(0);
     const savingInventory = ref(false);
     const machineId = props.machineId;
@@ -270,38 +280,38 @@ export default {
     let odd = false;
     
     watch(() => inventoryResult.value, (newResult) => {
-      let thiscat = '';
+      let thisgroupheader = '';
       if (!loadingInventory.value && newResult) {
+        console.log({newResult})
         const products = newResult.stockTransactionV2machineInventory.channelInfo.filter(r => r.product)
-        // Group products by channel number divided by 10
+        // Group products by category, origin
         const grouped = products.reduce((acc, r) => {
-          const groupKey = Math.floor(r.channel / 10);
-          if (!acc[groupKey]) acc[groupKey] = [];
-          acc[groupKey].push(r);
+          if (r.productId) {
+            const groupKey = `${r.product.category}${r.product.origin}`;
+            if (!acc[groupKey]) acc[groupKey] = [];
+            acc[groupKey].push(r);
+          }
           return acc;
         }, {});
-
-        // Convert grouped object to array and sort by groupKey in descending order
+        // Convert grouped object to array and sort by groupKey
         const sortedGroups = Object.keys(grouped)
-          .map(Number)
-          .sort((a, b) => b - a)
+          .map(String)
+          .sort((a, b) => a - b)
           .map(groupKey => grouped[groupKey]);
-
         // Sort each group by channel in ascending order
-        sortedGroups.forEach(group => group.sort((a, b) => a.channel - b.channel));
+        sortedGroups.forEach((group) => {
+          console.log(group);
+          group.sort((a, b) => a.channel - b.channel);
+        })
         // Map over sorted groups to get the final array with the required structure
         const productsSorted = sortedGroups.flatMap(group => group.map((r) => {
             odd = !odd;
             if (!r.product.texts.length) return false;
             let productText = r.product.texts[0].name;
-            console.log('Text 0', r.product.texts[0].name)
             if (!productText || productText == '') {
-              console.log('Text 1', r.product.texts[1].name)
               productText = r.product.texts[1].name;
-              console.log('Text 1',productText);
             }
             if (!productText || productText == '') {
-              console.log('Text missing', r.product.id)
               `${r.product.id} * MISSING *`
             }
             const res = {
@@ -309,7 +319,9 @@ export default {
               channel: r.channel,
               productId: r.productId,
               productName: productText,
-              category: r.product.category !== thiscat ? r.product.category : '',
+              category: r.product.category,
+              origin: r.product.origin,
+              groupheader: `${r.product.category}${r.product.origin}` !== thisgroupheader ? `${r.product.category}${r.product.origin}` : '',
               balance: r.balance,
               spoil: 0,
               moveout: 0,
@@ -322,11 +334,9 @@ export default {
               spoilDirty: false,
               resupplyDirty: false,
             };
-            thiscat = r.product.category;
+            thisgroupheader = `${r.product.category}${r.product.origin}`;
             return res;
           })).filter(Boolean);      
-
-
           inventoryLines.value = productsSorted;
       }
     });
@@ -335,14 +345,10 @@ export default {
         menuItemProducts.value = newMenuItems.menuItemsByMachineId.map( m => m.product.id );
         menuItemProductOptions.value = newMenuItems.menuItemsByMachineId.map((m) => {
           let productText = m.product.texts[0].name;
-          console.log('Text 0', m.product.texts[0].name)
           if (!productText || productText == '') {
-            console.log('Text 1', m.product.texts[1].name)
             productText = m.product.texts[1].name;
-            console.log('Text 1',productText);
           }
           if (!productText || productText == '') {
-            console.log('Text missing', m.product.id)
             `${m.product.id} * MISSING *`
           }
           return {
@@ -360,6 +366,7 @@ export default {
     refetch({ machineId })
     refetchMenuItems({ input: { machineId: machineId }})
     return {
+      showEmptyChannels,
       machine,
       savingInventory,
       saveError,
