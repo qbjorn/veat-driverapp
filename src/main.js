@@ -17,8 +17,13 @@ function getHeaders() {
 }
 
 // Create an http link:
+const uri = process.env.NODE_ENV === 'development' ?
+    'http://localhost:9000/graphql' :
+    process.env.VUE_APP_MODE === 'stage' ?
+      'https://stage.veat.se/graphql/' :
+      'https://stage.veat.se/graphql/';
 const httpLink = new HttpLink({
-  uri: process.env.NODE_ENV !== 'development' ? 'https://veat.se/graphql/' : 'http://localhost:9000/graphql',
+  uri,
   fetch: (uri, options) => {
     options.headers = getHeaders();
     return fetch(uri, options);
