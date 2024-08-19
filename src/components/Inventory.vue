@@ -320,8 +320,7 @@ export default {
       if (!loadingMenuItems.value && newMenuItems) {
         menuItemProducts.value = newMenuItems.menuItemsByMachineId.map( m => m.product.id );
         menuItemProductOptions.value = newMenuItems.menuItemsByMachineId.map((m) => {
-          menuItemProductOptions.value = newMenuItems.menuItemsByMachineId.map((m) => {
-          let productText = m.product.texts[0].name;
+         let productText = m.product.texts[0].name;
           console.log('Text 0', m.product.texts[0].name)
           if (!productText || productText == '') {
             console.log('Text 1', m.product.texts[1].name)
