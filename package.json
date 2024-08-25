@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --mode development",
+    "dev": "vite --mode dev",
     "build": "vite build --mode production",
     "build:stage": "vite build --mode stage",
     "preview": "vite preview",
