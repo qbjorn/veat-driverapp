@@ -6,7 +6,8 @@ import { DefaultApolloClient } from '@vue/apollo-composable'
 import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client/core'
 import App from './App.vue'
 
-const apiUrl = import.meta.env.VITE_API_URL;
+// const apiUrl = import.meta.env.VITE_API_URL; - NOT WORKING
+const apiUrl = 'https://veat.se/graphql/';
 
 const cache = new InMemoryCache()
 

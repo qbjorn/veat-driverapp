@@ -60,7 +60,7 @@
             v-for="inventoryLine in inventoryLines"
             id="inventoryLine.channel"
             class="row"
-            :class="`${inventoryLine.odd ? 'bg-green-1' : ''} ${inventoryLine.setArchive ? 'text-bold text-red' : ''}`"
+            :class="`${inventoryLine.odd ? 'bg-green-1' : ''} ${inventoryLine.setArchive ? 'text-bold text-red text-strike' : ''}`"
           >
             <!-- Category header -->
             <div v-if="inventoryLine.groupheader !== ''" class="q-pt-md col-12 bg-white text-black"><b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b></div>
@@ -146,7 +146,7 @@
             <!-- Category header -->
             <div v-if="inventoryLine.groupheader !== ''" class="q-pt-md col-12 bg-white"><b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b></div>
             <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="col-1 col-xs-1 q-pt-md">
-              <div class="inventoryLine.setArchive === true ? 'text-strike' : ''">{{ inventoryLine.channel }}</div>
+              <div class="inventoryLine.setArchive === true ? 'text-red text-strike' : ''">{{ inventoryLine.channel }}</div>
             </div>
             <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="col-8 col-xs-8 q-py-0 q-pr-md">
               <q-select
@@ -159,15 +159,15 @@
                 @change="setResupplyDirty(inventoryLine)"
               >
               </q-select>
-              <div v-if="inventoryLine.setArchive === true" class="q-pt-md text-strike">{{ inventoryLine.productName }}</div>
+              <div v-if="inventoryLine.setArchive === true" class="q-pt-md text-red text-strike">{{ inventoryLine.productName }}</div>
             </div>
             <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="col-1 col-xs-1">
               <q-input v-if="inventoryLine.setArchive !== true" v-model="inventoryLine.resupply" @change="setResupplyDirty(inventoryLine)" input-style="text-align: right" type="text" hide-bottom-space/>
-              <div v-if="inventoryLine.setArchive === true" class="q-pt-md text-strike text-right">{{ inventoryLine.resupply }}</div>
+              <div v-if="inventoryLine.setArchive === true" class="q-pt-md text-red text-strike text-right">{{ inventoryLine.resupply }}</div>
             </div>
             <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="col-1 col-xs-1">
               <q-input v-if="inventoryLine.setArchive !== true" v-model="inventoryLine.movein" @change="setResupplyDirty(inventoryLine)" class="q-ml-sm" input-style="text-align: right" type="text" hide-bottom-space/>
-              <div v-if="inventoryLine.setArchive === true" class="q-pt-md text-strike text-right">{{ inventoryLine.movein }}</div>
+              <div v-if="inventoryLine.setArchive === true" class="q-pt-md text-red text-strike text-right">{{ inventoryLine.movein }}</div>
             </div>
 
           </div>
