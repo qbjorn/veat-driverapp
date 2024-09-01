@@ -29,7 +29,7 @@
           <p v-show="!loadingMachines">
             <q-select v-model="machine" :options="machineOptions" label="Location" />
             <Inventory
-              v-if="driver && machine"
+              v-if="driver && machine !== null"
               :driver-id="driver?.value || ''"
               :machine-id="machine.value || ''"
               :machine-name="machine.label || ''"

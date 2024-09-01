@@ -4,7 +4,7 @@
         <h6
           class="q-pt-1 q-pb-1 q-mt-1 q-mb-1 text-primary"
         >
-          <span class="q-pt-lg">{{ `${currentPage==0?'Waste':'Refill'} for ${machineName} ${machine.isfridge===1?'(F)':'(M)'}` }}</span>
+          <span class="q-pt-lg">{{ `${currentPage==0?'Waste':'Refill'} for ${machineName} ${machine.isfridge===1?'(Fr)':'(Ma)'}` }}</span>
           <span style="float: right">Show empty <q-checkbox v-model="showEmptyChannels" /></span>
         </h6>
         
@@ -60,23 +60,55 @@
             v-for="inventoryLine in inventoryLines"
             id="inventoryLine.channel"
             class="row"
-            :class="`${inventoryLine.odd ? 'bg-green-1' : ''} ${inventoryLine.setArchive ? 'text-bold text-red text-strike' : ''}`"
+            :class="`${inventoryLine.odd ? 'bg-green-1' : ''}}`"
           >
             <!-- Category header -->
-            <div v-if="inventoryLine.groupheader !== ''" class="q-pt-md col-12 bg-white text-black"><b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b></div>
-            <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="col-1 col-xs-1 q-pt-md q-pr-xs q-pl-xs">
-              {{ inventoryLine.channel }}
+            <div
+              v-if="inventoryLine.groupheader !== ''"
+              style="text-decoration: none !important"
+              class="q-pt-md col-12 bg-white text-black"
+            >
+              <b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b>
             </div>
-            <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="col-7 col-xs-7 q-pt-md">
+            <div
+              v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine"
+              class="col-1 col-xs-1 q-pt-md q-pr-xs q-pl-xs"
+              :class="`${inventoryLine.setArchive ? 'text-bold text-red text-strike' : ''}`"
+            >
+              {{ inventoryLine.channel }}.
+            </div>
+            <div
+              v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine"
+              class="col-7 col-xs-7 q-pt-md"
+              :class="`${inventoryLine.setArchive ? 'text-bold text-red text-strike' : ''}`"
+            >
               {{ inventoryLine.productName }}
             </div>
-            <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="col-1 col-xs-1">
-              <q-input v-model="inventoryLine.spoil" @change="setSpoilDirty(inventoryLine);updateBalanceSpoil(inventoryLine)" input-style="text-align: right" type="text" hide-bottom-space/>
+            <div
+              v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine"
+              class="col-1 col-xs-1"
+              :class="`${inventoryLine.setArchive ? 'text-bold text-red text-strike' : ''}`"
+            >
+              <q-input
+                v-model="inventoryLine.spoil"
+                @change="setSpoilDirty(inventoryLine);updateBalanceSpoil(inventoryLine)"
+                input-style="text-align: right"
+                type="text"
+                hide-bottom-space/>
             </div>
-            <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="col-1 col-xs-1 q-pl-md">
-              <q-input v-model="inventoryLine.moveout" @change="setSpoilDirty(inventoryLine);updateBalanceMoveOut(inventoryLine)" input-style="text-align: right" type="text" hide-bottom-space/>
+            <div
+              v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine"
+              class="col-1 col-xs-1 q-pl-md"
+              :class="`${inventoryLine.setArchive ? 'text-bold text-red text-strike' : ''}`"
+            >
+              <q-input
+                v-model="inventoryLine.moveout" @change="setSpoilDirty(inventoryLine);updateBalanceMoveOut(inventoryLine)" input-style="text-align: right" type="text" hide-bottom-space/>
             </div>
-            <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="col-1 col-xs-1 q-pl-md">
+            <div
+              v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine"
+              class="col-1 col-xs-1 q-pl-md"
+              :class="`${inventoryLine.setArchive ? 'text-bold text-red text-strike' : ''}`"
+            >
               <q-input v-model="inventoryLine.newBalance" @change="setSpoilDirty(inventoryLine);updateSpoil(inventoryLine)" input-class="text-bold" input-style="text-align: right" type="text" hide-bottom-space/>
             </div>
             <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine"  style="text-align: right;" class="col-1 col-xs-1 q-mt-sm">
@@ -146,10 +178,18 @@
             <!-- Category header -->
             <div v-if="inventoryLine.groupheader !== ''" class="q-pt-md col-12 bg-white"><b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b></div>
             <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="col-1 col-xs-1 q-pt-md">
-              <div class="inventoryLine.setArchive === true ? 'text-red text-strike' : ''">{{ inventoryLine.channel }}</div>
+              <div
+                :class="`${inventoryLine.setArchive === true ? 'text-red text-bold text-strike' : ''}`"
+              >
+                {{ inventoryLine.channel }}.
+              </div>
             </div>
-            <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="col-8 col-xs-8 q-py-0 q-pr-md">
-              <q-select
+            <div
+              v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine"
+              class="col-8 col-xs-8 q-py-0 q-pr-md"
+              :class="`${inventoryLine.setArchive ? 'text-bold text-red text-strike' : ''}`"
+            >
+              <!-- <q-select
                 v-if="inventoryLine.setArchive !== true"
                 class="q-py-0 q-my-0"
                 v-model="inventoryLine.productId"
@@ -158,16 +198,17 @@
                 :display-value="menuItemProductOptions.find(m => m.value === inventoryLine.productId) ? menuItemProductOptions.find(m => m.value === inventoryLine.productId).label : void 0"
                 @change="setResupplyDirty(inventoryLine)"
               >
-              </q-select>
+              </q-select> -->
+              <div v-if="inventoryLine.setArchive !== true" class="q-pt-md">{{ inventoryLine.productName }}</div>
               <div v-if="inventoryLine.setArchive === true" class="q-pt-md text-red text-strike">{{ inventoryLine.productName }}</div>
             </div>
             <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="col-1 col-xs-1">
               <q-input v-if="inventoryLine.setArchive !== true" v-model="inventoryLine.resupply" @change="setResupplyDirty(inventoryLine)" input-style="text-align: right" type="text" hide-bottom-space/>
-              <div v-if="inventoryLine.setArchive === true" class="q-pt-md text-red text-strike text-right">{{ inventoryLine.resupply }}</div>
+              <div v-if="inventoryLine.setArchive === true" class="q-pt-md text-red text-bold text-strike text-right">{{ inventoryLine.resupply }}</div>
             </div>
             <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="col-1 col-xs-1">
               <q-input v-if="inventoryLine.setArchive !== true" v-model="inventoryLine.movein" @change="setResupplyDirty(inventoryLine)" class="q-ml-sm" input-style="text-align: right" type="text" hide-bottom-space/>
-              <div v-if="inventoryLine.setArchive === true" class="q-pt-md text-red text-strike text-right">{{ inventoryLine.movein }}</div>
+              <div v-if="inventoryLine.setArchive === true" class="q-pt-md text-red text-bold text-strike text-right">{{ inventoryLine.movein }}</div>
             </div>
 
           </div>
@@ -386,8 +427,8 @@ export default {
           inventoryLines.value.push({
             machineId: props.machineId,
             channel: newChannel.value,
-            productId: newProduct.value,
-            productName: '',
+            productId: newProduct.value.value,
+            productName: newProduct.value.label,
             category: newProduct.category,
             origin: newProduct.origin,
             groupheader: '',
@@ -583,12 +624,20 @@ export default {
     };
   },
   methods: {
+    checkNumber(e) {
+      const val = e.target.value;
+      const isNumber =  /^\d+$/.test(val);
+      if (!isNumber) {
+        e.target.value = 0;
+      }
+      return e.target.value
+    },
     updateBalanceSpoil(inventoryLine) {
       // console.log('updateBalance', inventoryLine)
       let bal = parseInt(inventoryLine.oldBalance) - (parseInt(inventoryLine.spoil) + parseInt(inventoryLine.moveout));
       if (bal <0) { bal = 0; }
       inventoryLine.newBalance = bal;
-      console.log('updateBalanceSpoil', {bal, inventoryLine})
+      // console.log('updateBalanceSpoil', {bal, inventoryLine})
       if (bal > 0) {
         inventoryLine.setArchive = false;
       }
@@ -629,7 +678,7 @@ export default {
           const newBalance = parseInt(line.newBalance) || 0;
           const input = {
             channel: line.channel,
-            productId: line.productId,  
+            productId: line.productId.value ? line.productId.value : line.productId, 
             spoil: spoil,
             moveout: moveout,
             balance: newBalance,
@@ -671,17 +720,17 @@ export default {
         try {
           const res = await this.updateMachineAllInventory({ input });
         } catch(e) {
-
           const err = {
             msg: 'Could not save spoil and inventory, please make sure you have Internet connection and try again.',
             err: e
           }
           this.saveError = true;
-          this.saveMessage = err.msg;
+          this.saveMessage = `${err.msg} ${e.message}`;
           this.savingInventory = false;
           return false;
         }
       }
+      // console.log('Resupply', resupplyLines);
       // Update resupply per channel
       if (resupplyLines.length) {
         // console.log(resupplyLines);
@@ -698,7 +747,7 @@ export default {
             err: e
           }
           this.saveError = true;
-          this.saveMessage = err.msg;
+          this.saveMessage = `${err.msg} ${e.message}`;
           this.savingInventory = false;
           return false;
         }          
@@ -706,7 +755,7 @@ export default {
       // Remove "archived" channels with 0 balance
       for (const line of this.inventoryLines) {
         if (line.setArchive === true && line.newBalance === 0) {
-          console.log('Checking setArchive', {line})
+          // console.log('Checking setArchive', {line})
           const input = {
             machineId: this.machineId,
             channel: line.channel,
@@ -721,7 +770,7 @@ export default {
               err: e
             }
             this.saveError = true;
-            this.saveMessage = err.msg;
+            this.saveMessage = `${err.msg} ${e.message}`;
             this.savingInventory = false;
             return false;
           }
@@ -742,7 +791,7 @@ export default {
             err: e
           }
           this.saveError = true;
-          this.saveMessage = err.msg;
+          this.saveMessage = `${err.msg} ${e.message}`;
           this.savingInventory = false;
           return false;
         }          
