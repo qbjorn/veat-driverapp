@@ -6,6 +6,9 @@ import { DefaultApolloClient } from '@vue/apollo-composable'
 import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client/core'
 import App from './App.vue'
 
+const apiUrl = import.meta.env.VITE_API_URL || 'https://veat.se/graphql/';
+// const apiUrl = 'https://veat.se/graphql/';
+
 const cache = new InMemoryCache()
 
 function getHeaders() {
@@ -17,11 +20,7 @@ function getHeaders() {
 }
 
 // Create an http link:
-const uri = process.env.NODE_ENV === 'development' ?
-    'http://localhost:9000/graphql' :
-    process.env.VUE_APP_MODE === 'stage' ?
-      'https://stage.veat.se/graphql/' :
-      'https://stage.veat.se/graphql/';
+const uri = apiUrl;
 const httpLink = new HttpLink({
   uri,
   fetch: (uri, options) => {
