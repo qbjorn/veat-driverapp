@@ -6,7 +6,10 @@ import { DefaultApolloClient } from '@vue/apollo-composable'
 import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client/core'
 import App from './App.vue'
 
-const apiUrl = import.meta.env.VITE_API_URL || 'https://veat.se/graphql/';
+// Access the mode the application was built for
+const mode = import.meta.env.MODE;
+
+const apiUrl = mode === 'dev' ? 'http://localhost:9000/graphql' : mode === 'stage' ? 'https://stage.veat.se/graphql/': 'https://veat.se/graphql/';
 // const apiUrl = 'https://veat.se/graphql/';
 
 const cache = new InMemoryCache()
