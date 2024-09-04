@@ -189,16 +189,6 @@
               class="col-8 col-xs-8 q-py-0 q-pr-md"
               :class="`${inventoryLine.setArchive ? 'text-bold text-red text-strike' : ''}`"
             >
-              <!-- <q-select
-                v-if="inventoryLine.setArchive !== true"
-                class="q-py-0 q-my-0"
-                v-model="inventoryLine.productId"
-                :options="menuItemProductOptions"
-                :label="void 0"
-                :display-value="menuItemProductOptions.find(m => m.value === inventoryLine.productId) ? menuItemProductOptions.find(m => m.value === inventoryLine.productId).label : void 0"
-                @change="setResupplyDirty(inventoryLine)"
-              >
-              </q-select> -->
               <div v-if="inventoryLine.setArchive !== true" class="q-pt-md">{{ inventoryLine.productName }}</div>
               <div v-if="inventoryLine.setArchive === true" class="q-pt-md text-red text-strike">{{ inventoryLine.productName }}</div>
             </div>
@@ -255,10 +245,14 @@
           <q-card-section>
             <q-select v-model="newProduct" :options="menuItemProductOptions" label="Product" />
           </q-card-section>
-
+          <q-card-section class="q-pt-none">
+            <q-input v-model="newRefill" label="Refill" type="number" />
+          </q-card-section>          <q-card-section class="q-pt-none">
+            <q-input v-model="newMoveIn" label="Move In" type="number" />
+          </q-card-section>
           <q-card-actions>
             <div class="col-6 text-left q-pr-0 q-mr-0">
-              <q-btn @click="addingChannel=false" class="bg-green-2" label="Cancel" v-close-popup/>
+              <q-btn @click="() => abortAddChannel()" class="bg-green-2" label="Cancel" v-close-popup/>
             </div>
             <div class="col-6 text-right q-pr-0 q-mr-0">
               <q-btn @click="addChannel" color="primary" label="Add"/>
@@ -279,7 +273,7 @@
           </q-card-section>
           <q-card-actions>
             <div class="col-6 text-left q-pr-0 q-mr-0">
-              <q-btn @click="archivingChannel=false" class="bg-green-2" label="Cancel" v-close-popup/>
+              <q-btn @click="() => abortArchiveMachineChannel()" class="bg-green-2" label="Cancel" v-close-popup/>
             </div>
             <div class="col-6 text-right q-pr-0 q-mr-0">
               <q-btn @click="archiveMachineChannel(archiveChannel)" color="primary" label="Remove"/>
@@ -389,12 +383,18 @@ export default {
     const addingChannel = ref(false);
     const newChannel = ref(0);
     const newProduct = ref('');
+    const newRefill = ref(0);
+    const newMoveIn = ref(0);
     const addChannelError = ref(false);
     const addChannelMessage = ref('');
     const addChannelInput = () => {
       addChannelError.value = false;
       addChannelMessage.value = '';
       addingChannel.value = true;
+      newChannel.value = 0;
+      newProduct.value = '';
+      newRefill.value = 0;
+      newMoveIn.value = 0;
     }
     const addChannel = () => {
       addChannelMessage.value = '';
@@ -435,24 +435,31 @@ export default {
             balance: 0,
             spoil: 0,
             moveout: 0,
-            resupply: 0,
-            movein: 0,
-            newBalance: 0,
+            resupply: newRefill.value,
+            movein: newMoveIn.value,
+            newBalance: newRefill.value + newMoveIn.value,
             oldBalance: 0,
             odd: false,
-            dirty: false,
+            dirty: true,
             spoilDirty: false,
-            resupplyDirty: false,
+            resupplyDirty: true,
             newLine: true,
           });
-          addingChannel.value = false;
-          addChannelMessage.value = '';
           showEmptyChannels.value = true;
+          abortAddChannel();
         }
       } else {
+        addingChannel.value = true;
         addChannelError.value = true;
         addChannelMessage.value = 'Please enter a channel number';
       }
+    }
+    const abortAddChannel = () => {
+      addingChannel.value = false;
+      addChannelError.value = false;
+      addChannelMessage.value = '';
+      newChannel.value = 0;
+      newProduct.value = '';
     }
     const archiveChannelError = ref(false);
     const archiveChannelMessage = ref('');
@@ -468,10 +475,18 @@ export default {
       const index = inventoryLines.value.findIndex(line => line.channel === channel);
       if (index !== -1 && inventoryLines.value[index].newBalance === 0) {
         inventoryLines.value[index].setArchive = true;
-        archivingChannel.value = false;
+        abortArchiveMachineChannel()
       } else {
-        console.log('Nada');
+        archiveChannelError.value = true;
+        archiveChannelMessage.value = `Could not remove channel ${channel}, it must have 0 balance to be removed`;
+        archivingChannel.value = true;
       }
+    }
+    const abortArchiveMachineChannel = () => {
+      archiveChannelError.value = false;
+      archiveChannelMessage.value = '';
+      archiveChannel.value = 0;
+      archivingChannel.value = false;
     }
     const { result: machineResult, loading: loadingMachine, error: errorMachine, refetch: refetchMachine } = useQuery(
       GET_MACHINE,
@@ -614,13 +629,17 @@ export default {
       addingChannel,
       addChannelError,
       addChannelMessage,
+      abortAddChannel,
       newProduct,
+      newRefill,
+      newMoveIn,
       archiveChannel,
       archivingChannel,
       archiveMachineChannel,
       archiveMachineChannelInput,
       archiveChannelError,
       archiveChannelMessage,
+      abortArchiveMachineChannel,
     };
   },
   methods: {

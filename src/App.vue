@@ -5,7 +5,7 @@
         <q-icon name="menu" />
       </q-btn>
       <q-toolbar-title>
-        VEAT Driver
+        VEAT Driver (v{{ version }})
       </q-toolbar-title>
       <q-btn flat round dense>
         <q-icon name="more_vert" />
@@ -46,6 +46,7 @@
 </template>
 <script>
 import { ref, watch } from 'vue'
+import { version } from '../package.json';
 import gql from 'graphql-tag'
 import { useQuery } from '@vue/apollo-composable'
 import Inventory from './components/Inventory.vue'
@@ -83,6 +84,7 @@ export default {
     return {
       machine: null,
       driver: null,
+      version: version,
     }
   },
   setup() {
