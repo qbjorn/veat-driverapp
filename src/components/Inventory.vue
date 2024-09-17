@@ -160,7 +160,7 @@
           <div class="row q-mb-md q-pb-md q-mt-0">
             <div class="col-6 text-left q-pl-0 q-ml-0">
               <q-btn @click="currentPage = 0" class="bg-green-2" label="< Back" />
-              <q-btn @click="addingMenuItem=true" outline class="border-green-2 q-ml-md" label="+ Menu item" />
+              <!-- <q-btn @click="addingMenuItem=true" outline class="border-green-2 q-ml-md" label="+ Menu item" /> -->
             </div>
             <div class="col-6 text-right q-pr-0 q-mr-0">
               <q-btn class="bg-green-2 q-mr-md" @click="addChannelInput" :disabled="savingInventory" label="+ Channel" />
