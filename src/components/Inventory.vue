@@ -30,7 +30,8 @@
           <!-- buttons -->
           <div class="row q-mb-md q-pb-md q-mt-0">
             <div class="col-6 text-left q-pl-0 q-ml-0">
-              <q-btn icon="cancel" @click="cancelChanges" class="bg-green-2" label="Cancel " />
+              <q-btn icon="cancel" @click="cancelChanges" class="bg-green-2" label="Cancel" />
+              
             </div>
             <div class="col-6 text-right q-pr-0 q-mr-0">
               <q-btn @click="nextPage" color="primary" label="Next >" />
@@ -158,11 +159,11 @@
         <div v-show="currentPage==1">
           <div class="row q-mb-md q-pb-md q-mt-0">
             <div class="col-6 text-left q-pl-0 q-ml-0">
-              <!-- <q-btn @click="cancelChanges" class="bg-green-2" label="Cancel " /> -->
               <q-btn @click="currentPage = 0" class="bg-green-2" label="< Back" />
+              <q-btn @click="addingMenuItem=true" outline class="border-green-2 q-ml-md" label="+ Menu item" />
             </div>
             <div class="col-6 text-right q-pr-0 q-mr-0">
-              <q-btn class="bg-green-2 q-mr-md" @click="addChannelInput" :disabled="savingInventory" label="Add channel" />
+              <q-btn class="bg-green-2 q-mr-md" @click="addChannelInput" :disabled="savingInventory" label="+ Channel" />
               <q-btn @click="saveChanges" :disabled="savingInventory" color="primary" label="Save" />
             </div>
           </div>
@@ -317,6 +318,30 @@
           </q-card-actions>
         </q-card>
       </q-dialog>
+      <q-dialog v-model="addingMenuItem">
+        <q-card>
+          <q-card-section>
+            <div class="text-h6">Add Menu Item</div>
+          </q-card-section>
+          <q-card-section>
+            <div v-if="addMenuItemError" class="text-negative">{{ addChannelMessage }}</div>
+          </q-card-section>
+          <q-card-section>
+            <q-select v-model="addMenuItemProduct" :options="allProductsOptions" label="Product" />
+          </q-card-section>
+          <q-card-section class="q-pt-none">
+            <q-input v-model="addMenuItemOverridePrice" label="Override price" type="number" />
+          </q-card-section> 
+          <q-card-actions>
+            <div class="col-6 text-left q-pr-0 q-mr-0">
+              <q-btn @click="() => abortAddChannel()" class="bg-green-2" label="Cancel" v-close-popup/>
+            </div>
+            <div class="col-6 text-right q-pr-0 q-mr-0">
+              <q-btn @click="addChannel" color="primary" label="Add"/>
+            </div>
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
     </div>
 </template>
 <script>
@@ -384,6 +409,34 @@ const UPDATE_MACHINE_ALL_REFILL = gql`
 const ARCHIVE_MACHINE_CHANNEL = gql`
   mutation ArchiveMachineChannel($input: archiveMachineChannelInput!) {
     archiveMachineChannel(input: $input) 
+  }
+`;
+const GET_PRODUCTS_QUERY = gql`
+  query Products {
+    products {
+      id
+      texts {
+        name
+      }
+      origin
+      category
+    }
+  }
+`;
+
+
+const CREATE_STOCKTRANSACTIONV2 = gql`
+  mutation CreateStockTransactionV2($input: StockTransactionV2Input!) {
+    createStockTransactionV2(input: $input) {
+      id
+    }
+  }
+`;
+const CREATE_INVENTORYSTOCKTRANSACTIONV2 = gql`
+  mutation CreateInventoryStockTransactionV2($input: StockTransactionV2InventoryInput!) {
+    inventoryStockTransactionV2(input: $input) {
+      id
+    }
   }
 `;
 
@@ -501,6 +554,10 @@ export default {
     const archiveChannelMessage = ref('');
     const archivingChannel = ref(false);
     const archiveChannel = ref(0);
+    const addingMenuItem = ref(false);
+    const addMenuItemError = ref(false);
+    const addMenuItemOverridePrice = ref(0);
+    const addMenuItemProduct = ref('');
     
     const archiveMachineChannelInput = (channel) => {
       archiveChannelError.value = false;
@@ -536,10 +593,13 @@ export default {
     const { result: inventoryResult, loading: loadingInventory, error: errorInventory, refetch } = useQuery(GET_INVENTORY_QUERY, {
       machineId
     });
+    const { result: productsResult, loading: loadingProducts, error: errorProducts, refetch: refetchProducts } = useQuery(GET_PRODUCTS_QUERY);
 
     const { mutate: updateMachineAllInventory } = useMutation(UPDATE_MACHINE_ALL_INVENTORY);
     const { mutate: updateMachineAllRefill } = useMutation(UPDATE_MACHINE_ALL_REFILL);
     const { mutate: setArchiveMachineChannel } = useMutation(ARCHIVE_MACHINE_CHANNEL);
+    const { mutate: createStockTransactionV2 } = useMutation(CREATE_STOCKTRANSACTIONV2);
+    const { mutate: createInventoryStockTransactionV2 } = useMutation(CREATE_INVENTORYSTOCKTRANSACTIONV2);
 
     // Watch for changes in machineId prop
     watch(() => props.machineId, async(newMachineId) => {
@@ -677,6 +737,12 @@ export default {
       archiveChannelError,
       archiveChannelMessage,
       abortArchiveMachineChannel,
+      createStockTransactionV2,
+      createInventoryStockTransactionV2,
+      addingMenuItem,
+      addMenuItemError,
+      addMenuItemOverridePrice,
+      addMenuItemProduct,
     };
   },
   methods: {
@@ -707,107 +773,99 @@ export default {
       this.currentPage = 0;
       this.$emit('cancelled');
     },
+    sortInventoryLines() {
+      this.inventoryLines.sort((a, b) => {
+        if (a.productId < b.productId) {
+          return -1;
+        }
+        if (a.productId > b.productId) {
+          return 1;
+        }
+        // If productId is the same, sort by channel
+        if (a.channel < b.channel) {
+          return -1;
+        }
+        if (a.channel > b.channel) {
+          return 1;
+        }
+        // If productId and channel are the same, sort by newLine
+        if (a.newLine < b.newLine) {
+          return -1;
+        }
+        if (a.newLine > b.newLine) {
+          return 1;
+        }
+        return 0;
+      });
+    },
     async saveChanges() {
-      let spoilAndInventoryLines = [];
-      let resupplyLines = [];
-      let newLines = [];
+      // let spoilAndInventoryLines = [];
+      // let resupplyLines = [];
+      // let newLines = [];
       this.savingInventory = true;
+      this.sortInventoryLines()
       for (const line of this.inventoryLines) {
         if (line.spoilDirty) {
-          const spoil = parseInt(line.spoil) || 0;
-          const moveout = parseInt(line.moveout) || 0;
-          const newBalance = parseInt(line.newBalance) || 0;
-          const input = {
-            channel: line.channel,
-            productId: line.productId.value ? line.productId.value : line.productId, 
-            spoil: spoil,
-            moveout: moveout,
-            balance: newBalance,
-          }
-          spoilAndInventoryLines.push(input)
-        }
-        // console.log('Checking resupply', {line})
-        if (line.resupplyDirty && line.newLine === false) {
-          const resupply = parseInt(line.resupply) || 0;
-          const movein = parseInt(line.movein) || 0;
-          // console.log(typeof resupply, typeof movein);
-          const input = {
-            channel: parseInt(line.channel),
-            productId: line.productId.value ? line.productId.value : line.productId,
-            refill: resupply,
-            movein: movein,
-          }
-          resupplyLines.push(input);
-        }
-        if (line.newLine) {
-          const resupply = parseInt(line.resupply) || 0;
-          const movein = parseInt(line.movein) || 0;
-          const input = {
-            channel: parseInt(line.channel),
-            productId: line.productId.value ? line.productId.value : line.productId,
-            refill: resupply,
-            movein: movein,
-          }
-          newLines.push(input);
-        }
-      }
-      // Update spoil and inventory per channel
-      if (spoilAndInventoryLines.length) {
-        const input = {
-          machineId: this.machineId,
-          who: this.driverId,
-          transactionItems: spoilAndInventoryLines,
-       }
-        try {
-          const res = await this.updateMachineAllInventory({ input });
-        } catch(e) {
-          const err = {
-            msg: 'Could not save spoil and inventory, please make sure you have Internet connection and try again.',
-            err: e
-          }
-          this.saveError = true;
-          this.saveMessage = `${err.msg} ${e.message}`;
-          this.savingInventory = false;
-          return false;
-        }
-      }
-      // console.log('Resupply', resupplyLines);
-      // Update resupply per channel
-      if (resupplyLines.length) {
-        // console.log(resupplyLines);
-        const input = {
-          machineId: this.machineId,
-          who: this.driverId,
-          refillItems: resupplyLines,
-        }
-        try {
-          const res = await this.updateMachineAllRefill({ input });
-        } catch(e) {
-          const err = {
-            msg: 'Could not save refill, please make sure you have Internet connection and try again.',
-            err: e
-          }
-          this.saveError = true;
-          this.saveMessage = `${err.msg} ${e.message}`;
-          this.savingInventory = false;
-          return false;
-        }          
-      }
-      // Remove "archived" channels with 0 balance
-      for (const line of this.inventoryLines) {
-        if (line.setArchive === true && line.newBalance === 0) {
-          // console.log('Checking setArchive', {line})
-          const input = {
+          const moveoutInput = {
             machineId: this.machineId,
-            channel: line.channel,
+            channel: parseInt(line.channel),
+            productId: line.productId,
+            quantity: parseInt(line.moveout),
+            transactionType: 'MOVEOUT',
+            transactionTimestamp: null,
+            who: this.driverId,
+            ref: null,
+            archived: 0,
           }
           try {
-            await this.setArchiveMachineChannel({ input });
-            this.inventoryLines = this.inventoryLines.filter((l) => l.channel !== line.channel);
+            const res = await this.createStockTransactionV2({ input: moveoutInput });
           } catch(e) {
-            console.log({e});
             const err = {
-              msg: `Could not archive channel ${input.channel}.`,
+              msg: `Could not save MOVE OUT for channel ${line.channel}, please make sure you have Internet connection and try again.`,
+              err: e
+            }
+            this.saveError = true;
+            this.saveMessage = `${err.msg} ${e.message}`;
+            this.savingInventory = false;
+            return false;
+          }
+          const spoilInput = {
+            machineId: this.machineId,
+            channel: line.channel,
+            productId: line.productId,
+            quantity: parseInt(line.spoil),
+            transactionType: 'SPOIL',
+            transactionTimestamp: null,
+            who: this.driverId,
+            ref: null,
+            archived: 0,
+          }
+          try {
+            const res = await this.createStockTransactionV2({ input: spoilInput });
+          } catch(e) {
+            const err = {
+              msg: `Could not save SPOIL for channel ${line.channel}, please make sure you have Internet connection and try again.`,
+              err: e
+            }
+            this.saveError = true;
+            this.saveMessage = `${err.msg} ${e.message}`;
+            this.savingInventory = false;
+            return false;
+          }
+          const inventoryInput = {
+            machineId: this.machineId,
+            channel: parseInt(line.channel),
+            productId: line.productId,
+            balance: line.newBalance,
+            transactionTimestamp: null,
+            who: this.driverId,
+            ref: null,
+          }
+          try {
+            const res = await this.createInventoryStockTransactionV2({ input: inventoryInput });
+          } catch(e) {
+            const err = {
+              msg: `Could not save INVENTORY for channel ${line.channel}, please make sure you have Internet connection and try again.`,
               err: e
             }
             this.saveError = true;
@@ -816,27 +874,247 @@ export default {
             return false;
           }
         }
-      }
-      // Add new channels
-      if (newLines.length) {
-        const input = {
-          machineId: this.machineId,
-          who: this.driverId,
-          refillItems: newLines,
-        }
-        try {
-          const res = await this.updateMachineAllRefill({ input });
-        } catch(e) {
-          const err = {
-            msg: 'Could not save new line(s).',
-            err: e
+        if (line.archiveChannel) {
+          const archiveInput = {
+            machineId: this.machineId,
+            channel: parseInt(line.channel),
           }
-          this.saveError = true;
-          this.saveMessage = `${err.msg} ${e.message}`;
-          this.savingInventory = false;
-          return false;
-        }          
+          try {
+            const res = await this.archiveMachineChannel({ input: archiveInput });
+          } catch(e) {
+            const err = {
+              msg: `Could not archive channel ${line.channel}, please make sure you have Internet connection and try again.`,
+              err: e
+            }
+            this.saveError = true;
+            this.saveMessage = `${err.msg} ${e.message}`;
+            this.savingInventory = false;
+            return false;
+          }
+        }
+        if (line.resupplyDirty) {
+          if (line.movein != 0) {
+            const moveinInput = {
+              machineId: this.machineId,
+              channel: parseInt(line.channel),
+              productId: line.productId,
+              quantity: parseInt(line.movein),
+              transactionType: 'MOVEIN',
+              transactionTimestamp: null,
+              who: this.driverId,
+              ref: null,
+              archived: 0,
+            }
+            try {
+              const res = await this.createStockTransactionV2({ input: moveinInput });
+            } catch(e) {
+              const err = {
+                msg: `Could not save MOVE IN for channel ${line.channel}, please make sure you have Internet connection and try again.`,
+                err: e
+              }
+              this.saveError = true;
+              this.saveMessage = `${err.msg} ${e.message}`;
+              this.savingInventory = false;
+              return false;
+            }
+           
+          }
+          if (line.setArchive === true && line.newBalance === 0) {
+              const input = {
+                machineId: this.machineId,
+                channel: line.channel,
+              }
+              try {
+                await this.setArchiveMachineChannel({ input });
+                this.inventoryLines = this.inventoryLines.filter((l) => l.channel !== line.channel);
+              } catch(e) {
+                console.log({e});
+                const err = {
+                  msg: `Could not archive channel ${input.channel}.`,
+                  err: e
+                }
+                this.saveError = true;
+                this.saveMessage = `${err.msg} ${e.message}`;
+                this.savingInventory = false;
+                return false;
+              }
+            } 
+          if (line.resupply != 0) {
+            if (line.newChannel) {
+              const inventoryNewChannelInput = {
+                machineId: this.machineId,
+                channel: parseInt(line.channel),
+                productId: line.productId,
+                balance: 0,
+                transactionTimestamp: null,
+                who: this.driverId,
+                ref: null,
+              }
+              try {
+                const res = await this.createInventoryStockTransactionV2({ input: inventoryNewChannelInput });
+              } catch(e) {
+                const err = {
+                  msg: `Could not save INVENTORY for Added channel ${line.channel}, please make sure you have Internet connection and try again.`,
+                  err: e
+                }
+                this.saveError = true;
+                this.saveMessage = `${err.msg} ${e.message}`;
+                this.savingInventory = false;
+                return false;
+              }              
+            }
+            const resupplyInput = {
+              machineId: this.machineId,
+              channel: parseInt(line.channel),
+              productId: line.productId,
+              quantity: parseInt(line.resupply),
+              transactionType: 'RESUPPLY',
+              transactionTimestamp: null,
+              who: this.driverId,
+              ref: null,
+              archived: 0,
+            }
+            try {
+              const res = await this.createStockTransactionV2({ input: resupplyInput });
+            } catch(e) {
+              const err = {
+                msg: `Could not save RESUPPLY for channel ${line.channel}, please make sure you have Internet connection and try again.`,
+                err: e
+              }
+              this.saveError = true;
+              this.saveMessage = `${err.msg} ${e.message}`;
+              this.savingInventory = false;
+              return false;
+            }
+          }
+        }
       }
+
+      // for (const line of this.inventoryLines) {
+      //   if (line.spoilDirty) {
+      //     const spoil = parseInt(line.spoil) || 0;
+      //     const moveout = parseInt(line.moveout) || 0;
+      //     const newBalance = parseInt(line.newBalance) || 0;
+      //     const input = {
+      //       channel: line.channel,
+      //       productId: line.productId.value ? line.productId.value : line.productId, 
+      //       spoil: spoil,
+      //       moveout: moveout,
+      //       balance: newBalance,
+      //     }
+      //     spoilAndInventoryLines.push(input)
+      //   }
+      //   // console.log('Checking resupply', {line})
+      //   if (line.resupplyDirty && line.newLine === false) {
+      //     const resupply = parseInt(line.resupply) || 0;
+      //     const movein = parseInt(line.movein) || 0;
+      //     // console.log(typeof resupply, typeof movein);
+      //     const input = {
+      //       channel: parseInt(line.channel),
+      //       productId: line.productId.value ? line.productId.value : line.productId,
+      //       refill: resupply,
+      //       movein: movein,
+      //     }
+      //     resupplyLines.push(input);
+      //   }
+      //   if (line.newLine) {
+      //     const resupply = parseInt(line.resupply) || 0;
+      //     const movein = parseInt(line.movein) || 0;
+      //     const input = {
+      //       channel: parseInt(line.channel),
+      //       productId: line.productId.value ? line.productId.value : line.productId,
+      //       refill: resupply,
+      //       movein: movein,
+      //     }
+      //     newLines.push(input);
+      //   }
+      // }
+      // Update spoil and inventory per channel
+      // if (spoilAndInventoryLines.length) {
+      //   const input = {
+      //     machineId: this.machineId,
+      //     who: this.driverId,
+      //     transactionItems: spoilAndInventoryLines,
+      //  }
+      //   try {
+      //     const res = await this.updateMachineAllInventory({ input });
+      //   } catch(e) {
+      //     const err = {
+      //       msg: 'Could not save spoil and inventory, please make sure you have Internet connection and try again.',
+      //       err: e
+      //     }
+      //     this.saveError = true;
+      //     this.saveMessage = `${err.msg} ${e.message}`;
+      //     this.savingInventory = false;
+      //     return false;
+      //   }
+      // }
+      // // console.log('Resupply', resupplyLines);
+      // // Update resupply per channel
+      // if (resupplyLines.length) {
+      //   // console.log(resupplyLines);
+      //   const input = {
+      //     machineId: this.machineId,
+      //     who: this.driverId,
+      //     refillItems: resupplyLines,
+      //   }
+      //   try {
+      //     const res = await this.updateMachineAllRefill({ input });
+      //   } catch(e) {
+      //     const err = {
+      //       msg: 'Could not save refill, please make sure you have Internet connection and try again.',
+      //       err: e
+      //     }
+      //     this.saveError = true;
+      //     this.saveMessage = `${err.msg} ${e.message}`;
+      //     this.savingInventory = false;
+      //     return false;
+      //   }          
+      // }
+      // // Remove "archived" channels with 0 balance
+      // for (const line of this.inventoryLines) {
+      //   if (line.setArchive === true && line.newBalance === 0) {
+      //     // console.log('Checking setArchive', {line})
+      //     const input = {
+      //       machineId: this.machineId,
+      //       channel: line.channel,
+      //     }
+      //     try {
+      //       await this.setArchiveMachineChannel({ input });
+      //       this.inventoryLines = this.inventoryLines.filter((l) => l.channel !== line.channel);
+      //     } catch(e) {
+      //       console.log({e});
+      //       const err = {
+      //         msg: `Could not archive channel ${input.channel}.`,
+      //         err: e
+      //       }
+      //       this.saveError = true;
+      //       this.saveMessage = `${err.msg} ${e.message}`;
+      //       this.savingInventory = false;
+      //       return false;
+      //     }
+      //   }
+      // }
+      // // Add new channels
+      // if (newLines.length) {
+      //   const input = {
+      //     machineId: this.machineId,
+      //     who: this.driverId,
+      //     refillItems: newLines,
+      //   }
+      //   try {
+      //     const res = await this.updateMachineAllRefill({ input });
+      //   } catch(e) {
+      //     const err = {
+      //       msg: 'Could not save new line(s).',
+      //       err: e
+      //     }
+      //     this.saveError = true;
+      //     this.saveMessage = `${err.msg} ${e.message}`;
+      //     this.savingInventory = false;
+      //     return false;
+      //   }          
+      // }
       this.savingInventory = false;
       this.$emit('saved');
     },
