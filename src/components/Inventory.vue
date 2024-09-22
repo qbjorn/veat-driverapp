@@ -874,24 +874,68 @@ export default {
             return false;
           }
         }
-        if (line.archiveChannel) {
-          const archiveInput = {
-            machineId: this.machineId,
-            channel: parseInt(line.channel),
-          }
-          try {
-            const res = await this.archiveMachineChannel({ input: archiveInput });
-          } catch(e) {
-            const err = {
-              msg: `Could not archive channel ${line.channel}, please make sure you have Internet connection and try again.`,
-              err: e
-            }
-            this.saveError = true;
-            this.saveMessage = `${err.msg} ${e.message}`;
-            this.savingInventory = false;
-            return false;
-          }
+        // if (line.archiveChannel) {
+        //   const archiveInput = {
+        //     machineId: this.machineId,
+        //     channel: parseInt(line.channel),
+        //   }
+        //   try {
+        //     const res = await this.archiveMachineChannel({ input: archiveInput });
+        //   } catch(e) {
+        //     const err = {
+        //       msg: `Could not archive channel ${line.channel}, please make sure you have Internet connection and try again.`,
+        //       err: e
+        //     }
+        //     this.saveError = true;
+        //     this.saveMessage = `${err.msg} ${e.message}`;
+        //     this.savingInventory = false;
+        //     return false;
+        //   }
+        // }
+        if (line.setArchive === true && line.newBalance === 0) {
+              const input = {
+                machineId: this.machineId,
+                channel: line.channel,
+              }
+              try {
+                await this.setArchiveMachineChannel({ input });
+                this.inventoryLines = this.inventoryLines.filter((l) => l.channel !== line.channel);
+              } catch(e) {
+                console.log({e});
+                const err = {
+                  msg: `Could not archive channel ${input.channel}.`,
+                  err: e
+                }
+                this.saveError = true;
+                this.saveMessage = `${err.msg} ${e.message}`;
+                this.savingInventory = false;
+                return false;
+              }
         }
+        // Add new product to channel -done in backend?
+        // if (line.newChannel) {
+        //   const inventoryNewChannelInput = {
+        //     machineId: this.machineId,
+        //     channel: parseInt(line.channel),
+        //     productId: line.productId,
+        //     balance: 0,
+        //     transactionTimestamp: null,
+        //     who: this.driverId,
+        //     ref: null,
+        //   }
+        //   try {
+        //     const res = await this.createInventoryStockTransactionV2({ input: inventoryNewChannelInput });
+        //   } catch(e) {
+        //     const err = {
+        //       msg: `Could not save INVENTORY for Added channel ${line.channel}, please make sure you have Internet connection and try again.`,
+        //       err: e
+        //     }
+        //     this.saveError = true;
+        //     this.saveMessage = `${err.msg} ${e.message}`;
+        //     this.savingInventory = false;
+        //     return false;
+        //   }              
+        // }        
         if (line.resupplyDirty) {
           if (line.movein != 0) {
             const moveinInput = {
@@ -919,50 +963,7 @@ export default {
             }
            
           }
-          if (line.setArchive === true && line.newBalance === 0) {
-              const input = {
-                machineId: this.machineId,
-                channel: line.channel,
-              }
-              try {
-                await this.setArchiveMachineChannel({ input });
-                this.inventoryLines = this.inventoryLines.filter((l) => l.channel !== line.channel);
-              } catch(e) {
-                console.log({e});
-                const err = {
-                  msg: `Could not archive channel ${input.channel}.`,
-                  err: e
-                }
-                this.saveError = true;
-                this.saveMessage = `${err.msg} ${e.message}`;
-                this.savingInventory = false;
-                return false;
-              }
-            } 
           if (line.resupply != 0) {
-            if (line.newChannel) {
-              const inventoryNewChannelInput = {
-                machineId: this.machineId,
-                channel: parseInt(line.channel),
-                productId: line.productId,
-                balance: 0,
-                transactionTimestamp: null,
-                who: this.driverId,
-                ref: null,
-              }
-              try {
-                const res = await this.createInventoryStockTransactionV2({ input: inventoryNewChannelInput });
-              } catch(e) {
-                const err = {
-                  msg: `Could not save INVENTORY for Added channel ${line.channel}, please make sure you have Internet connection and try again.`,
-                  err: e
-                }
-                this.saveError = true;
-                this.saveMessage = `${err.msg} ${e.message}`;
-                this.savingInventory = false;
-                return false;
-              }              
-            }
             const resupplyInput = {
               machineId: this.machineId,
               channel: parseInt(line.channel),
