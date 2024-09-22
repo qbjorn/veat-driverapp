@@ -4,7 +4,7 @@
         <h6
           class="q-pt-1 q-pb-1 q-mt-1 q-mb-1 text-primary"
         >
-          <span class="q-pt-lg">{{ `${currentPage==0?'Waste':'Refill'} for ${machineName} ${machine.isfridge===1?'(Fr)':'(Ma)'}` }}</span>
+          <span class="q-pt-lg">{{ `${currentPage==0?'Waste':'Refill'} for ${machineName} ${machine.isfridge===1?'(Fr.)':'(Ma.)'}` }}</span>
           <span style="float: right">Show empty <q-checkbox v-model="showEmptyChannels" /></span>
         </h6>
         
