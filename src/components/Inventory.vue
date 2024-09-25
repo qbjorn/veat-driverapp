@@ -392,25 +392,6 @@ const GET_INVENTORY_QUERY = gql`
     }
   }
 `;
-const UPDATE_MACHINE_ALL_INVENTORY = gql`
-  mutation UpdateMachineAllInventory($input: megaUpdateMachineAllInventory!) {
-    updateMachineAllInventory(input: $input) {
-      machineId
-    }
-  }
-`;
-const UPDATE_MACHINE_ALL_REFILL = gql`
-  mutation UpdateMachineAllRefill($input: megaUpdateMachineAllRefill!) {
-    updateMachineAllRefill(input: $input) {
-      machineId
-    }
-  }
-`;
-const ARCHIVE_MACHINE_CHANNEL = gql`
-  mutation ArchiveMachineChannel($input: archiveMachineChannelInput!) {
-    archiveMachineChannel(input: $input) 
-  }
-`;
 const GET_PRODUCTS_QUERY = gql`
   query Products {
     products {
@@ -424,19 +405,9 @@ const GET_PRODUCTS_QUERY = gql`
   }
 `;
 
-
-const CREATE_STOCKTRANSACTIONV2 = gql`
-  mutation CreateStockTransactionV2($input: StockTransactionV2Input!) {
-    createStockTransactionV2(input: $input) {
-      id
-    }
-  }
-`;
-const CREATE_INVENTORYSTOCKTRANSACTIONV2 = gql`
-  mutation CreateInventoryStockTransactionV2($input: StockTransactionV2InventoryInput!) {
-    inventoryStockTransactionV2(input: $input) {
-      id
-    }
+const UPDATE_EVERYTHING_FOR_ONE_CHANNEL = gql`
+  mutation UpdateEverythingForOneChannel($input: updateEverythingLine!) {
+    updateEverythingForOneChannel(input: $input)
   }
 `;
 
@@ -515,7 +486,7 @@ export default {
         if (!addChannelError.value) {
           inventoryLines.value.push({
             machineId: props.machineId,
-            channel: newChannel.value,
+            channel: parseInt(newChannel.value),
             productId: newProduct.value.value,
             productName: newProduct.value.label,
             category: newProduct.category,
@@ -524,15 +495,16 @@ export default {
             balance: 0,
             spoil: 0,
             moveout: 0,
-            resupply: newRefill.value,
-            movein: newMoveIn.value,
-            newBalance: newRefill.value + newMoveIn.value,
+            resupply: parseInt(newRefill.value),
+            movein: parseInt(newMoveIn.value),
+            newBalance: parseInt(newRefill.value) + parseInt(newMoveIn.value),
             oldBalance: 0,
             odd: false,
             dirty: true,
             spoilDirty: false,
             resupplyDirty: true,
             newLine: true,
+            setArchive: false,
           });
           showEmptyChannels.value = true;
           abortAddChannel();
@@ -595,11 +567,7 @@ export default {
     });
     const { result: productsResult, loading: loadingProducts, error: errorProducts, refetch: refetchProducts } = useQuery(GET_PRODUCTS_QUERY);
 
-    const { mutate: updateMachineAllInventory } = useMutation(UPDATE_MACHINE_ALL_INVENTORY);
-    const { mutate: updateMachineAllRefill } = useMutation(UPDATE_MACHINE_ALL_REFILL);
-    const { mutate: setArchiveMachineChannel } = useMutation(ARCHIVE_MACHINE_CHANNEL);
-    const { mutate: createStockTransactionV2 } = useMutation(CREATE_STOCKTRANSACTIONV2);
-    const { mutate: createInventoryStockTransactionV2 } = useMutation(CREATE_INVENTORYSTOCKTRANSACTIONV2);
+    const { mutate: updateEverythingForOneChannel } = useMutation(UPDATE_EVERYTHING_FOR_ONE_CHANNEL);
 
     // Watch for changes in machineId prop
     watch(() => props.machineId, async(newMachineId) => {
@@ -711,9 +679,6 @@ export default {
       loadingInventory,
       errorInventory,
       inventoryLines,
-      updateMachineAllInventory,
-      updateMachineAllRefill,
-      setArchiveMachineChannel,
       currentPage,
       inventoryResult,
       driverId,
@@ -737,8 +702,7 @@ export default {
       archiveChannelError,
       archiveChannelMessage,
       abortArchiveMachineChannel,
-      createStockTransactionV2,
-      createInventoryStockTransactionV2,
+      updateEverythingForOneChannel,
       addingMenuItem,
       addMenuItemError,
       addMenuItemOverridePrice,
@@ -752,9 +716,10 @@ export default {
       this.inventoryLines[index][fieldName] = newValue;
       this.inventoryLines[index].spoilDirty = true;
       this.inventoryLines[index].newBalance = 
-        this.inventoryLines[index].oldBalance -
-        (this.inventoryLines[index].spoil +
-        this.inventoryLines[index].moveout);
+        parseInt(this.inventoryLines[index].oldBalance) -
+        (parseInt(this.inventoryLines[index].spoil) +
+        parseInt(this.inventoryLines[index].moveout)
+      );
     },
     updateSpoilBalance(value, index) {
       // Convert the input value to a number. If the conversion fails, default to 0.
@@ -775,12 +740,6 @@ export default {
     },
     sortInventoryLines() {
       this.inventoryLines.sort((a, b) => {
-        if (a.productId < b.productId) {
-          return -1;
-        }
-        if (a.productId > b.productId) {
-          return 1;
-        }
         // If productId is the same, sort by channel
         if (a.channel < b.channel) {
           return -1;
@@ -789,332 +748,54 @@ export default {
           return 1;
         }
         // If productId and channel are the same, sort by newLine
-        if (a.newLine < b.newLine) {
+        const newLineNumberA = a.newLine ? 0 : 1;
+        const newLineNumberB = b.newLine ? 0 : 1;
+        if (newLineNumberA < newLineNumberA) {
           return -1;
         }
-        if (a.newLine > b.newLine) {
+        if (newLineNumberA > newLineNumberA) {
           return 1;
         }
         return 0;
       });
     },
     async saveChanges() {
-      // let spoilAndInventoryLines = [];
-      // let resupplyLines = [];
-      // let newLines = [];
       this.savingInventory = true;
       this.sortInventoryLines()
-      for (const line of this.inventoryLines) {
-        if (line.spoilDirty) {
-          const moveoutInput = {
-            machineId: this.machineId,
-            channel: parseInt(line.channel),
-            productId: line.productId,
-            quantity: parseInt(line.moveout),
-            transactionType: 'MOVEOUT',
-            transactionTimestamp: null,
-            who: this.driverId,
-            ref: null,
-            archived: 0,
-          }
-          try {
-            const res = await this.createStockTransactionV2({ input: moveoutInput });
-          } catch(e) {
-            const err = {
-              msg: `Could not save MOVE OUT for channel ${line.channel}, please make sure you have Internet connection and try again.`,
-              err: e
-            }
-            this.saveError = true;
-            this.saveMessage = `${err.msg} ${e.message}`;
-            this.savingInventory = false;
-            return false;
-          }
-          const spoilInput = {
-            machineId: this.machineId,
-            channel: line.channel,
-            productId: line.productId,
-            quantity: parseInt(line.spoil),
-            transactionType: 'SPOIL',
-            transactionTimestamp: null,
-            who: this.driverId,
-            ref: null,
-            archived: 0,
-          }
-          try {
-            const res = await this.createStockTransactionV2({ input: spoilInput });
-          } catch(e) {
-            const err = {
-              msg: `Could not save SPOIL for channel ${line.channel}, please make sure you have Internet connection and try again.`,
-              err: e
-            }
-            this.saveError = true;
-            this.saveMessage = `${err.msg} ${e.message}`;
-            this.savingInventory = false;
-            return false;
-          }
-          const inventoryInput = {
-            machineId: this.machineId,
-            channel: parseInt(line.channel),
-            productId: line.productId,
-            balance: line.newBalance,
-            transactionTimestamp: null,
-            who: this.driverId,
-            ref: null,
-          }
-          try {
-            const res = await this.createInventoryStockTransactionV2({ input: inventoryInput });
-          } catch(e) {
-            const err = {
-              msg: `Could not save INVENTORY for channel ${line.channel}, please make sure you have Internet connection and try again.`,
-              err: e
-            }
-            this.saveError = true;
-            this.saveMessage = `${err.msg} ${e.message}`;
-            this.savingInventory = false;
-            return false;
-          }
+
+      for(const line of this.inventoryLines) {
+        const input = {
+          machineId: this.machineId,
+          driverId: this.driverId,
+          productId: line.productId,
+          channel: parseInt(line.channel),
+          spoilDirty: line.spoilDirty,
+          spoil: parseInt(line.spoil),
+          newBalance: parseInt(line.newBalance),
+          resupplyDirty: line.resupplyDirty,
+          resupply: parseInt(line.resupply),
+          movein: parseInt(line.movein),
+          moveout: parseInt(line.moveout),
+          archived: line.setArchive ? 1 : 0,
+          ref: '',
         }
-        if (line.archiveChannel) {
-          const archiveInput = {
-            machineId: this.machineId,
-            channel: parseInt(line.channel),
+        try {
+          console.log(`Saving line ${line.channel} ${line.productName} ${line.newBalance}`);
+          const res = await this.updateEverythingForOneChannel({ input });
+          console.log(`Saved line ${line.channel} ${line.productName} ${line.newBalance}`);
+        } catch(e) {
+          const err = {
+            msg: `Could not update channel ${line.channel}, please make sure you have Internet connection and try again. (${e.message})`,
+            err: e
           }
-          try {
-            const res = await this.archiveMachineChannel({ input: archiveInput });
-          } catch(e) {
-            const err = {
-              msg: `Could not archive channel ${line.channel}, please make sure you have Internet connection and try again.`,
-              err: e
-            }
-            this.saveError = true;
-            this.saveMessage = `${err.msg} ${e.message}`;
-            this.savingInventory = false;
-            return false;
-          }
+          this.saveError = true;
+          this.saveMessage = `${err.msg} ${e.message}`;
+          this.savingInventory = false;
+          return false;
         }
-        if (line.resupplyDirty) {
-          if (line.movein != 0) {
-            const moveinInput = {
-              machineId: this.machineId,
-              channel: parseInt(line.channel),
-              productId: line.productId,
-              quantity: parseInt(line.movein),
-              transactionType: 'MOVEIN',
-              transactionTimestamp: null,
-              who: this.driverId,
-              ref: null,
-              archived: 0,
-            }
-            try {
-              const res = await this.createStockTransactionV2({ input: moveinInput });
-            } catch(e) {
-              const err = {
-                msg: `Could not save MOVE IN for channel ${line.channel}, please make sure you have Internet connection and try again.`,
-                err: e
-              }
-              this.saveError = true;
-              this.saveMessage = `${err.msg} ${e.message}`;
-              this.savingInventory = false;
-              return false;
-            }
-           
-          }
-          if (line.setArchive === true && line.newBalance === 0) {
-              const input = {
-                machineId: this.machineId,
-                channel: line.channel,
-              }
-              try {
-                await this.setArchiveMachineChannel({ input });
-                this.inventoryLines = this.inventoryLines.filter((l) => l.channel !== line.channel);
-              } catch(e) {
-                console.log({e});
-                const err = {
-                  msg: `Could not archive channel ${input.channel}.`,
-                  err: e
-                }
-                this.saveError = true;
-                this.saveMessage = `${err.msg} ${e.message}`;
-                this.savingInventory = false;
-                return false;
-              }
-            } 
-          if (line.resupply != 0) {
-            if (line.newChannel) {
-              const inventoryNewChannelInput = {
-                machineId: this.machineId,
-                channel: parseInt(line.channel),
-                productId: line.productId,
-                balance: 0,
-                transactionTimestamp: null,
-                who: this.driverId,
-                ref: null,
-              }
-              try {
-                const res = await this.createInventoryStockTransactionV2({ input: inventoryNewChannelInput });
-              } catch(e) {
-                const err = {
-                  msg: `Could not save INVENTORY for Added channel ${line.channel}, please make sure you have Internet connection and try again.`,
-                  err: e
-                }
-                this.saveError = true;
-                this.saveMessage = `${err.msg} ${e.message}`;
-                this.savingInventory = false;
-                return false;
-              }              
-            }
-            const resupplyInput = {
-              machineId: this.machineId,
-              channel: parseInt(line.channel),
-              productId: line.productId,
-              quantity: parseInt(line.resupply),
-              transactionType: 'RESUPPLY',
-              transactionTimestamp: null,
-              who: this.driverId,
-              ref: null,
-              archived: 0,
-            }
-            try {
-              const res = await this.createStockTransactionV2({ input: resupplyInput });
-            } catch(e) {
-              const err = {
-                msg: `Could not save RESUPPLY for channel ${line.channel}, please make sure you have Internet connection and try again.`,
-                err: e
-              }
-              this.saveError = true;
-              this.saveMessage = `${err.msg} ${e.message}`;
-              this.savingInventory = false;
-              return false;
-            }
-          }
-        }
+
       }
 
-      // for (const line of this.inventoryLines) {
-      //   if (line.spoilDirty) {
-      //     const spoil = parseInt(line.spoil) || 0;
-      //     const moveout = parseInt(line.moveout) || 0;
-      //     const newBalance = parseInt(line.newBalance) || 0;
-      //     const input = {
-      //       channel: line.channel,
-      //       productId: line.productId.value ? line.productId.value : line.productId, 
-      //       spoil: spoil,
-      //       moveout: moveout,
-      //       balance: newBalance,
-      //     }
-      //     spoilAndInventoryLines.push(input)
-      //   }
-      //   // console.log('Checking resupply', {line})
-      //   if (line.resupplyDirty && line.newLine === false) {
-      //     const resupply = parseInt(line.resupply) || 0;
-      //     const movein = parseInt(line.movein) || 0;
-      //     // console.log(typeof resupply, typeof movein);
-      //     const input = {
-      //       channel: parseInt(line.channel),
-      //       productId: line.productId.value ? line.productId.value : line.productId,
-      //       refill: resupply,
-      //       movein: movein,
-      //     }
-      //     resupplyLines.push(input);
-      //   }
-      //   if (line.newLine) {
-      //     const resupply = parseInt(line.resupply) || 0;
-      //     const movein = parseInt(line.movein) || 0;
-      //     const input = {
-      //       channel: parseInt(line.channel),
-      //       productId: line.productId.value ? line.productId.value : line.productId,
-      //       refill: resupply,
-      //       movein: movein,
-      //     }
-      //     newLines.push(input);
-      //   }
-      // }
-      // Update spoil and inventory per channel
-      // if (spoilAndInventoryLines.length) {
-      //   const input = {
-      //     machineId: this.machineId,
-      //     who: this.driverId,
-      //     transactionItems: spoilAndInventoryLines,
-      //  }
-      //   try {
-      //     const res = await this.updateMachineAllInventory({ input });
-      //   } catch(e) {
-      //     const err = {
-      //       msg: 'Could not save spoil and inventory, please make sure you have Internet connection and try again.',
-      //       err: e
-      //     }
-      //     this.saveError = true;
-      //     this.saveMessage = `${err.msg} ${e.message}`;
-      //     this.savingInventory = false;
-      //     return false;
-      //   }
-      // }
-      // // console.log('Resupply', resupplyLines);
-      // // Update resupply per channel
-      // if (resupplyLines.length) {
-      //   // console.log(resupplyLines);
-      //   const input = {
-      //     machineId: this.machineId,
-      //     who: this.driverId,
-      //     refillItems: resupplyLines,
-      //   }
-      //   try {
-      //     const res = await this.updateMachineAllRefill({ input });
-      //   } catch(e) {
-      //     const err = {
-      //       msg: 'Could not save refill, please make sure you have Internet connection and try again.',
-      //       err: e
-      //     }
-      //     this.saveError = true;
-      //     this.saveMessage = `${err.msg} ${e.message}`;
-      //     this.savingInventory = false;
-      //     return false;
-      //   }          
-      // }
-      // // Remove "archived" channels with 0 balance
-      // for (const line of this.inventoryLines) {
-      //   if (line.setArchive === true && line.newBalance === 0) {
-      //     // console.log('Checking setArchive', {line})
-      //     const input = {
-      //       machineId: this.machineId,
-      //       channel: line.channel,
-      //     }
-      //     try {
-      //       await this.setArchiveMachineChannel({ input });
-      //       this.inventoryLines = this.inventoryLines.filter((l) => l.channel !== line.channel);
-      //     } catch(e) {
-      //       console.log({e});
-      //       const err = {
-      //         msg: `Could not archive channel ${input.channel}.`,
-      //         err: e
-      //       }
-      //       this.saveError = true;
-      //       this.saveMessage = `${err.msg} ${e.message}`;
-      //       this.savingInventory = false;
-      //       return false;
-      //     }
-      //   }
-      // }
-      // // Add new channels
-      // if (newLines.length) {
-      //   const input = {
-      //     machineId: this.machineId,
-      //     who: this.driverId,
-      //     refillItems: newLines,
-      //   }
-      //   try {
-      //     const res = await this.updateMachineAllRefill({ input });
-      //   } catch(e) {
-      //     const err = {
-      //       msg: 'Could not save new line(s).',
-      //       err: e
-      //     }
-      //     this.saveError = true;
-      //     this.saveMessage = `${err.msg} ${e.message}`;
-      //     this.savingInventory = false;
-      //     return false;
-      //   }          
-      // }
       this.savingInventory = false;
       this.$emit('saved');
     },
