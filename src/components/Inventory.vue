@@ -17,15 +17,7 @@
           :thickness="2"
         />Loading inventory...
       </div>
-      <div v-if="savingInventory">
-        <q-spinner
-          class="mr-2"
-          color="primary"
-          size="3em"
-          :thickness="2"
-        />Saving inventory...
-      </div>
-      <div v-show="!loadingInventory && !savingInventory">
+       <div v-show="!loadingInventory && !savingInventory">
         <div v-show="currentPage==0">
           <!-- buttons -->
           <div class="row q-mb-md q-pb-md q-mt-0">
@@ -342,6 +334,21 @@
           </q-card-actions>
         </q-card>
       </q-dialog>
+      <q-dialog v-model="savingInventory">
+        <q-card>
+          <q-card-section>
+            <div class="text-h6">Saving inventory</div>
+          </q-card-section>
+          <q-card-section>
+            <q-spinner
+              class="mr-md"
+              color="primary"
+              size="3em"
+              :thickness="2"
+            />Saving channel {{ savingChannel }}...
+          </q-card-section>
+        </q-card>
+      </q-dialog>
     </div>
 </template>
 <script>
@@ -426,6 +433,7 @@ export default {
     return {
       savingSpoil: false,
       savingResupply: false,
+      savingChannel: 0,
     }
   },
   setup(props) {
@@ -764,6 +772,7 @@ export default {
       this.sortInventoryLines()
 
       for(const line of this.inventoryLines) {
+        this.savingChannel = line.channel;
         const input = {
           machineId: this.machineId,
           driverId: this.driverId,
@@ -780,9 +789,7 @@ export default {
           ref: '',
         }
         try {
-          console.log(`Saving line ${line.channel} ${line.productName} ${line.newBalance}`);
           const res = await this.updateEverythingForOneChannel({ input });
-          console.log(`Saved line ${line.channel} ${line.productName} ${line.newBalance}`);
         } catch(e) {
           const err = {
             msg: `Could not update channel ${line.channel}, please make sure you have Internet connection and try again. (${e.message})`,
@@ -791,9 +798,10 @@ export default {
           this.saveError = true;
           this.saveMessage = `${err.msg} ${e.message}`;
           this.savingInventory = false;
+          this.savingChannel = 0;
           return false;
         }
-
+        this.savingChannel = 0;
       }
 
       this.savingInventory = false;
