@@ -1,5 +1,13 @@
 <template>
   <div>
+    <!-- Overlay -->
+    <div v-if="savingInventory" class="overlay">
+      <div class="overlay-content">
+        <q-spinner size="100px" />
+        <p>Saving changes...</p>
+      </div>
+    </div>
+
     <q-toolbar class="text-white bg-primary">
       <q-btn flat round dense>
         <q-icon name="menu" />
@@ -35,6 +43,7 @@
               :machine-name="machine.label || ''"
               @saved="clearMachine"
               @cancelled="clearMachine"
+              :saving-inventory="savingInventory"
             />
           </p>
           <p v-show="loadingMachines">
@@ -88,6 +97,7 @@ export default {
     }
   },
   setup() {
+    const savingInventory = ref(false);
     const driverOptions = ref([]);
     const { 
       result: drivers,
@@ -133,6 +143,7 @@ export default {
       loadingDrivers,
       machineOptions,
       driverOptions,
+      savingInventory,
     };
   },
   methods: {
@@ -143,8 +154,25 @@ export default {
 }
 
 </script>
-<style>
+<style scoped>
 .bg-primary {
   background-color: #1b5e20 !important
+}
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.overlay-content {
+  text-align: center;
+  color: white;
 }
 </style>

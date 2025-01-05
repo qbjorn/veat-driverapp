@@ -9,14 +9,12 @@
         </h6>
         
       </div>
-      <div v-if="loadingInventory">
-        <q-spinner
-          class="mr-2"
-          color="primary"
-          size="3em"
-          :thickness="2"
-        />Loading inventory...
+      <div v-if="loadingInventory" class="overlay">
+      <div class="overlay-content">
+        <q-spinner size="50px" />
+        <p>Loading inventory...</p>
       </div>
+    </div>
        <div v-show="!loadingInventory && !savingInventory">
         <div v-show="currentPage==0">
           <!-- buttons -->
@@ -428,6 +426,7 @@ export default {
     driverId: String,
     machineId: String,
     machineName: String,
+    savingInventory: ref(false),
   },
   data: function() {
     return {
@@ -439,7 +438,7 @@ export default {
   setup(props) {
     const showEmptyChannels = ref(false)
     const currentPage = ref(0);
-    const savingInventory = ref(false);
+    const savingInventory = props.savingInventory;
     const machineId = props.machineId;
     const driverId = props.driverId;
     const machine = ref({})
@@ -772,6 +771,10 @@ export default {
       this.sortInventoryLines()
 
       for(const line of this.inventoryLines) {
+        if (!line.spoilDirty && !line.resupplyDirty && line.setArchive !== 1 && line.newLine !== true) {
+          continue;
+        }
+        console.log({line});
         this.savingChannel = line.channel;
         const input = {
           machineId: this.machineId,
@@ -814,3 +817,22 @@ export default {
   }
 }
 </script>
+<style scoped>
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.overlay-content {
+  text-align: center;
+  color: white;
+}
+</style>
