@@ -590,7 +590,7 @@ export default {
     watch(() => inventoryResult.value, (newResult) => {
       let thisgroupheader = '';
       if (!loadingInventory.value && newResult) {
-        console.log({newResult})
+        // console.log({newResult})
         const products = newResult.stockTransactionV2machineInventory.channelInfo.filter(r => r.product)
         // Group products by category, origin
         const grouped = products.reduce((acc, r) => {
@@ -601,7 +601,7 @@ export default {
           }
           return acc;
         }, {});
-        console.log({ grouped })
+        // console.log({ grouped })
         // Convert grouped object to array and sort by groupKey
         const sortedGroups = Object.keys(grouped)
           .map(String)
@@ -612,7 +612,7 @@ export default {
           // console.log(group);
           group.sort((a, b) => a.channel - b.channel);
         })
-        console.log({sortedGroups})
+        // console.log({sortedGroups})
         // Map over sorted groups to get the final array with the required structure
         const productsSorted = sortedGroups.flatMap(group => group.map((r) => {
             odd = !odd;
@@ -649,7 +649,7 @@ export default {
             thisgroupheader = `${r.product.category}${r.product.origin}`;
             return res;
           })).filter(Boolean);      
-          console.log({productsSorted})
+          // console.log({productsSorted})
           inventoryLines.value = productsSorted;
       }
     });
@@ -773,7 +773,7 @@ export default {
       this.savingInventory = true;
       this.sortInventoryLines()
 
-      console.log({ inventoryLines: this.inventoryLines })
+      // console.log({ inventoryLines: this.inventoryLines })
 
       for(const line of this.inventoryLines) {
         if (!line.spoilDirty && !line.resupplyDirty && line.setArchive !== 1 && line.newLine !== true) {
