@@ -45,12 +45,12 @@ const MULTILOG_LOG_MUTATION = gql`
   }
 `;
 
-const multilogSetup = async () => {
+const multilogSetup = () => {
   const multilog = ref({});
   
   // Define your initialization logic
   async function multilogInit(clientToken, userId) {
-    const { result: data } = await useQuery(MULTILOG_INIT_QUERY, { clientToken, userId });
+    const { result: data } = useQuery(MULTILOG_INIT_QUERY, { clientToken, userId });
     return data.multiLogInit;
   }
   
@@ -67,7 +67,7 @@ const multilogSetup = async () => {
       logText,
     };
     
-    const { result: data } = await useMutation(MULTILOG_LOG_MUTATION, variables);
+    const { result: data } = useMutation(MULTILOG_LOG_MUTATION, variables);
     return data.multiLog;
   }
   
@@ -80,4 +80,4 @@ const multilogSetup = async () => {
   return multilog;
 }
 
-export default await multilogSetup();
+export default multilogSetup();

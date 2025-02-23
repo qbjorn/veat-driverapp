@@ -29,9 +29,9 @@
           <!-- Header Row -->
           <div class="header-row">
             <div class="header-item">Channel & Product Name</div>
-            <div class="header-item">Spoil</div>
+            <div class="header-item">Waste</div>
             <div class="header-item">Move to other machine</div>
-            <div class="header-item">Number in machine after spoil and move</div>
+            <div class="header-item">Number in machine after waste and move</div>
           </div>
           <!-- Inventory Rows -->
           <div
@@ -81,13 +81,15 @@
                 </div>
               </div>
               <div class="data-item">
-                <label class="input-label">Spoil</label>
+                <label class="input-label">Waste</label>
                 <q-input
                   v-model="inventoryLine.spoil"
                   @update:model-value="value => updateSpoilFields('spoil', value, index)"
                   @focus="selectInput"
                   input-style="text-align: right"
-                  type="number"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
                   hide-bottom-space
                   hide-top-space
                 />
@@ -99,19 +101,23 @@
                   @update:model-value="value => updateSpoilFields('moveout', value, index)"
                   @focus="selectInput"
                   input-style="text-align: right;"
-                  type="number"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
                   hide-bottom-space
                   hide-top-space
                 />
               </div>
               <div class="data-item">
-                <label class="input-label">Number in machine after spoil and move</label>
+                <label class="input-label">Number in machine after waste and move</label>
                 <q-input
                   v-model="inventoryLine.newBalance"
                   @update:model-value="value => updateSpoilBalance(value, index)"
                   @focus="selectInput"
                   input-style="text-align: right"
-                  type="number"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
                   hide-bottom-space
                   hide-top-space
                 />
@@ -182,7 +188,9 @@
                 @update:model-value="value => updateResupplyFields('resupply', value, index)"
                 @focus="selectInput"
                 input-style="text-align: right"
-                type="number"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
                 hide-bottom-space
                 hide-top-space
               />
@@ -194,7 +202,9 @@
                 @update:model-value="value => updateResupplyFields('movein', value, index)"
                 @focus="selectInput"
                 input-style="text-align: right"
-                type="number"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
                 hide-bottom-space
                 hide-top-space
               />
@@ -246,7 +256,9 @@
               v-model="newChannel"
               @focus="selectInput"
               label="Channel"
-              type="number"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
             />
           </q-card-section>
           <q-card-section>
@@ -257,7 +269,9 @@
               v-model="newRefill"
               @focus="selectInput"
               label="Refill"
-              type="number"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
             />
           </q-card-section>
           <q-card-section class="q-pt-none">
@@ -265,7 +279,9 @@
               v-model="newMoveIn"
               @focus="selectInput"
               label="Move In"
-              type="number"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
             />
           </q-card-section>
           <q-card-actions>
@@ -315,7 +331,9 @@
               v-model="addMenuItemOverridePrice"
               @focus="selectInput"
               label="Override price"
-              type="number"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
             />
           </q-card-section> 
           <q-card-actions>
@@ -925,6 +943,9 @@ export default {
   }
   .header-item:nth-child(n+2), .data-item:nth-child(n+2) {
     flex: 1 1 100%; /* Wrap after the first item */
+  }
+  .data-item {
+    display: flex;
   }
   .input-label {
     display: inline-block;
