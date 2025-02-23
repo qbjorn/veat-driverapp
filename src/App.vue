@@ -54,7 +54,7 @@
   </div>
 </template>
 <script>
-import { ref, watch } from 'vue'
+import { ref, watch, inject } from 'vue'
 import { version } from '../package.json';
 import gql from 'graphql-tag'
 import { useQuery } from '@vue/apollo-composable'
@@ -97,6 +97,7 @@ export default {
     }
   },
   setup() {
+    const multilog = inject('multilog');
     const savingInventory = ref(false);
     const driverOptions = ref([]);
     const { 

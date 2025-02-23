@@ -5,7 +5,7 @@
           class="q-pt-1 q-pb-1 q-mt-1 q-mb-1 text-primary"
         >
           <span class="q-pt-lg">{{ `${currentPage==0?'Waste':'Refill'} for ${machineName} ${machine.isfridge===1?'(Fr.)':'(Ma.)'}` }}</span>
-          <span style="float: right">Show empty <q-checkbox v-model="showEmptyChannels" /></span>
+          <!-- span style="float: right">Show empty <q-checkbox v-model="showEmptyChannels" /></span -->
         </h6>
         
       </div>
@@ -21,119 +21,101 @@
           <div class="row q-mb-md q-pb-md q-mt-0">
             <div class="col-6 text-left q-pl-0 q-ml-0">
               <q-btn icon="cancel" @click="cancelChanges" class="bg-green-2" label="Cancel" />
-              
             </div>
             <div class="col-6 text-right q-pr-0 q-mr-0">
-              <q-btn @click="nextPage" color="primary" label="Next >" />
+              <q-btn @click="nextPage" class="bg-green-1" label="Next >" />
             </div>
           </div>
-          <!-- row header -->
-          <div class="row">
-            <div class="col-1 text-bold">
-              Ch
-            </div>
-            <div class="col-7 text-bold">
-              Product
-            </div>
-            <div class="col-1 text-bold q-text-danger" style="text-align: right;">
-              Waste
-            </div>
-            <div class="col-1 q-pl-md text-bold q-text-danger" style="text-align: right;">
-              Out
-            </div>
-            <div class="col-1 q-pl-md text-bold" style="text-align: right;">
-              Left
-            </div>
-            <div class="col-1 q-pr-md"></div>
+          <!-- Header Row -->
+          <div class="header-row">
+            <div class="header-item">Channel & Product Name</div>
+            <div class="header-item">Spoil</div>
+            <div class="header-item">Move to other machine</div>
+            <div class="header-item">Number in machine after spoil and move</div>
           </div>
-          <!-- Inventory rows-->
+          <!-- Inventory Rows -->
           <div
             v-for="inventoryLine, index in inventoryLines"
-            id="inventoryLine.channel"
-            class="row"
-            :class="`${inventoryLine.odd ? 'bg-green-1' : ''}}`"
+            :key="inventoryLine.channel"
+            class="inventory-row"
           >
-            <!-- Category header -->
+            <!-- Category Header -->
             <div
               v-if="inventoryLine.groupheader !== ''"
-              style="text-decoration: none !important"
-              class="q-pt-md col-12 bg-white text-black"
+              class="category-header"
             >
               <b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b>
             </div>
+
+            <!-- Data Row -->
             <div
               v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine"
-              class="col-1 q-pt-md q-pr-xs q-pl-xs"
-              :class="`${inventoryLine.setArchive ? 'text-bold text-red text-strike' : ''}`"
+              class="data-row"
             >
-              {{ inventoryLine.channel }}.
-            </div>
-            <div
-              v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine"
-              class="col-7 q-pt-md"
-              :class="`${inventoryLine.setArchive ? 'text-bold text-red text-strike' : ''}`"
-            >
-              {{ inventoryLine.productName }}
-            </div>
-            <div
-              v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine"
-              class="col-1 text-right"
-              :class="`${inventoryLine.setArchive ? 'text-bold text-red text-strike' : ''}`"
-            >
-              <q-input
-                v-model="inventoryLine.spoil"
-                @update:model-value="value => updateSpoilFields('spoil', value, index)"
-                input-style="text-align: right"
-                type="text"
-                hide-bottom-space
-              />
-            </div>
-            <div
-              v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine"
-              class="col-1 q-pl-md text-right"
-              :class="`${inventoryLine.setArchive ? 'text-bold text-red text-strike' : ''}`"
-            >
-              <q-input
-                v-model="inventoryLine.moveout"
-                @update:model-value="value => updateSpoilFields('moveout', value, index)"
-                input-style="text-align: right"
-                type="text"
-                hide-bottom-space
-              />
-            </div>
-            <div
-              v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine"
-              class="col-1 q-pl-sm text-right"
-              :class="`${inventoryLine.setArchive ? 'text-bold text-red text-strike' : ''}`"
-            >
-              <q-input
-                v-model="inventoryLine.newBalance"
-                @update:model-value="value => updateSpoilBalance( value, index)"
-                input-class="text-bold"
-                input-style="text-align: right"
-                type="text"
-                hide-bottom-space
-              />
-            </div>
-            <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine"  style="text-align: right;" class="col-1 col-xs-1 q-mt-sm">
-              <q-btn
-                v-if="inventoryLine.newBalance == 0 && inventoryLine.setArchive === false"
-                @click="archiveMachineChannelInput(inventoryLine.channel)"
-                title="Remove channel"
-                class="q-mt-0"
-                flat
-                outline
-                icon="delete"
-              />
-              <q-btn
-                v-if="inventoryLine.newBalance == 0 && inventoryLine.setArchive === true"
-                @click="inventoryLine.setArchive=false"
-                title="Undo remove channel"
-                class="q-mt-0"
-                flat
-                outline
-                icon="undo"
-              />
+              <div class="data-item">
+                <div class="text-bold">
+                  <span
+                    class="q-mt-2"
+                    :class="`${inventoryLine.setArchive === true ? 'text-red text-bold text-strike' : ''}`"
+                  >
+                    {{ inventoryLine.channel }}.
+                    &nbsp;&nbsp;{{ inventoryLine.productName }}</span>
+                  <q-btn
+                    v-if="inventoryLine.newBalance == 0 && inventoryLine.setArchive === false"
+                    @click="archiveMachineChannelInput(inventoryLine.channel)"
+                    title="Remove channel"
+                    class="q-mt-0 q-ml-0"
+                    flat
+                    outline
+                    icon="delete"
+                  />
+                  <q-btn
+                    v-if="inventoryLine.newBalance == 0 && inventoryLine.setArchive === true"
+                    @click="inventoryLine.setArchive=false"
+                    title="Undo remove channel"
+                    class="q-mt-0 q-ml-0"
+                    flat
+                    outline
+                    icon="undo"
+                  />
+                </div>
+              </div>
+              <div class="data-item">
+                <label class="input-label">Spoil</label>
+                <q-input
+                  v-model="inventoryLine.spoil"
+                  @update:model-value="value => updateSpoilFields('spoil', value, index)"
+                  @focus="selectInput"
+                  input-style="text-align: right"
+                  type="number"
+                  hide-bottom-space
+                  hide-top-space
+                />
+              </div>
+              <div class="data-item">
+                <label class="input-label">Move to other machine</label>
+                <q-input
+                  v-model="inventoryLine.moveout"
+                  @update:model-value="value => updateSpoilFields('moveout', value, index)"
+                  @focus="selectInput"
+                  input-style="text-align: right;"
+                  type="number"
+                  hide-bottom-space
+                  hide-top-space
+                />
+              </div>
+              <div class="data-item">
+                <label class="input-label">Number in machine after spoil and move</label>
+                <q-input
+                  v-model="inventoryLine.newBalance"
+                  @update:model-value="value => updateSpoilBalance(value, index)"
+                  @focus="selectInput"
+                  input-style="text-align: right"
+                  type="number"
+                  hide-bottom-space
+                  hide-top-space
+                />
+              </div>
             </div>
           </div>
           <div class="row q-pb-md q-pt-md q-mt-md">
@@ -148,85 +130,78 @@
         <!-- Second page - refill and outgoing balance -->
         <div v-show="currentPage==1">
           <div class="row q-mb-md q-pb-md q-mt-0">
-            <div class="col-6 text-left q-pl-0 q-ml-0">
+            <div class="col-5 text-left q-pl-0 q-ml-0">
               <q-btn @click="currentPage = 0" class="bg-green-2" label="< Back" />
               <!-- <q-btn @click="addingMenuItem=true" outline class="border-green-2 q-ml-md" label="+ Menu item" /> -->
             </div>
-            <div class="col-6 text-right q-pr-0 q-mr-0">
+            <div class="col-7 text-right q-pr-0 q-mr-0">
               <q-btn class="bg-green-2 q-mr-md" @click="addChannelInput" :disabled="savingInventory" label="+ Channel" />
               <q-btn @click="saveChanges" :disabled="savingInventory" color="primary" label="Save" />
             </div>
           </div>
-          <div class="row">
-            <div class="col-1 text-bold">
-              Ch
-            </div>
-            <div class="col-7 text-bold">
-              Product
-            </div>
-            <div class="col-1 text-bold text-right q-text-success">
-              Refill
-            </div>
-            <div class="col-1 text-bold q-text-success text-right">
-              <span class="q-ml-md">Move</span>
-            </div>
-            <div class="col-1 text-bold q-text-success text-right">
-              <span class="q-ml-md">Bal</span>
-            </div>            
+
+          <!-- Header Row -->
+          <div class="header-row">
+            <div class="header-item">Channel & Product Name</div>
+            <div class="header-item">Refill</div>
+            <div class="header-item">Moved in from other machine</div>
+            <div class="header-item">Number in machine after refill and move in</div>
           </div>
+
+          <!-- Inventory Rows -->
           <div
-            v-for="inventoryLine,index in inventoryLines"
-            id="inventoryLine.channel"
-            class="row q-mb-md"
-            :class="inventoryLine.odd ? 'bg-green-1' : ''"
+            v-for="inventoryLine, index in inventoryLines"
+            :key="inventoryLine.channel"
+            class="inventory-row"
           >
             <!-- New channel header -->
-            <div v-if="inventoryLine.newLine" class="q-pt-md col-12 bg-white text-green"><b>ADDED CHANNEL</b></div>
-            <!-- Category header -->
-            <div v-if="inventoryLine.groupheader !== ''" class="q-pt-md col-12 bg-white"><b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b></div>
-            <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="col-1 q-pt-md">
-              <div
-                :class="`${inventoryLine.setArchive === true ? 'text-red text-bold text-strike' : ''}`"
-              >
-                {{ inventoryLine.channel }}.
-              </div>
-            </div>
+            <div v-if="inventoryLine.newLine" class="category-header bg-white text-green"><b>ADDED CHANNEL</b></div>
+            <!-- Category Header -->
             <div
-              v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine"
-              class="col-7 q-py-0 q-pr-md text-left"
-              :class="`${inventoryLine.setArchive ? 'text-bold text-red text-strike' : ''}`"
+              v-if="inventoryLine.groupheader !== ''"
+              class="category-header"
             >
-              <div v-if="inventoryLine.setArchive !== true" class="q-pt-md">{{ inventoryLine.productName }}</div>
-              <div v-if="inventoryLine.setArchive === true" class="q-pt-md text-red text-strike">{{ inventoryLine.productName }}</div>
+              <b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b>
             </div>
-            <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="col-1 text-right">
+
+            <!-- Data Row -->
+            <div class="data-item">
+              <div class="text-bold">
+                <span
+                  class="q-mt-2"
+                  :class="`${inventoryLine.setArchive === true ? 'text-red text-bold text-strike' : ''}`"
+                >
+                  {{ inventoryLine.channel }}.
+                  &nbsp;&nbsp;{{ inventoryLine.productName }}</span>
+                </div>
+            </div>
+            <div class="data-item">
+              <label class="input-label">Refill</label>
               <q-input
-                v-if="inventoryLine.setArchive !== true"
                 v-model="inventoryLine.resupply"
                 @update:model-value="value => updateResupplyFields('resupply', value, index)"
+                @focus="selectInput"
                 input-style="text-align: right"
-                type="text"
+                type="number"
                 hide-bottom-space
+                hide-top-space
               />
-              <div v-if="inventoryLine.setArchive === true" class="q-pt-md text-red text-bold text-strike text-right">{{ inventoryLine.resupply }}</div>
             </div>
-            <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="col-1">
+            <div class="data-item">
+              <label class="input-label">Move in from another machine</label>
               <q-input
-                v-if="inventoryLine.setArchive !== true"
                 v-model="inventoryLine.movein"
                 @update:model-value="value => updateResupplyFields('movein', value, index)"
-                class="q-ml-sm"
+                @focus="selectInput"
                 input-style="text-align: right"
-                type="text"
+                type="number"
                 hide-bottom-space
+                hide-top-space
               />
-              <div v-if="inventoryLine.setArchive === true" class="q-pt-md text-red text-bold text-strike text-right">{{ inventoryLine.movein }}</div>
-            </div>
-            <div
-              v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine"
-              class="col-1 text-right"
-            >
-              <div class="q-pt-md text-bold text-right">{{ inventoryLine.newBalance }}</div>
+            </div>            
+            <div class="data-item">
+              <label class="input-label">Number in machine after refill and move in</label>
+              <div style="display: inline-block;text-align: right !important;" class="balance-value q-pt-md text-bold text-right">{{ inventoryLine.newBalance }}</div>
             </div>
           </div>
           <div class="row q-pb-md q-pt-md q-mt-md">
@@ -267,15 +242,31 @@
             <div v-if="addChannelError" class="text-negative">{{ addChannelMessage }}</div>
           </q-card-section>
           <q-card-section class="q-pt-none">
-            <q-input v-model="newChannel" label="Channel" type="number" />
+            <q-input
+              v-model="newChannel"
+              @focus="selectInput"
+              label="Channel"
+              type="number"
+            />
           </q-card-section>
           <q-card-section>
             <q-select v-model="newProduct" :options="menuItemProductOptions" label="Product" />
           </q-card-section>
           <q-card-section class="q-pt-none">
-            <q-input v-model="newRefill" label="Refill" type="number" />
-          </q-card-section>          <q-card-section class="q-pt-none">
-            <q-input v-model="newMoveIn" label="Move In" type="number" />
+            <q-input
+              v-model="newRefill"
+              @focus="selectInput"
+              label="Refill"
+              type="number"
+            />
+          </q-card-section>
+          <q-card-section class="q-pt-none">
+            <q-input
+              v-model="newMoveIn"
+              @focus="selectInput"
+              label="Move In"
+              type="number"
+            />
           </q-card-section>
           <q-card-actions>
             <div class="col-6 text-left q-pr-0 q-mr-0">
@@ -320,7 +311,12 @@
             <q-select v-model="addMenuItemProduct" :options="allProductsOptions" label="Product" />
           </q-card-section>
           <q-card-section class="q-pt-none">
-            <q-input v-model="addMenuItemOverridePrice" label="Override price" type="number" />
+            <q-input
+              v-model="addMenuItemOverridePrice"
+              @focus="selectInput"
+              label="Override price"
+              type="number"
+            />
           </q-card-section> 
           <q-card-actions>
             <div class="col-6 text-left q-pr-0 q-mr-0">
@@ -350,7 +346,7 @@
     </div>
 </template>
 <script>
-import { ref, watch } from 'vue'
+import { ref, watch, inject } from 'vue'
 import gql from 'graphql-tag'
 import { useQuery, useMutation } from '@vue/apollo-composable'
 import iconSet from "quasar/icon-set/ionicons-v4";
@@ -427,6 +423,7 @@ export default {
     machineId: String,
     machineName: String,
     savingInventory: ref(false),
+    multilog: Object,
   },
   data: function() {
     return {
@@ -436,7 +433,7 @@ export default {
     }
   },
   setup(props) {
-    const showEmptyChannels = ref(false)
+    const showEmptyChannels = ref(true)
     const currentPage = ref(0);
     const savingInventory = props.savingInventory;
     const machineId = props.machineId;
@@ -454,6 +451,25 @@ export default {
     const newMoveIn = ref(0);
     const addChannelError = ref(false);
     const addChannelMessage = ref('');
+    const multilog = ref(props.multilog);
+
+    const logInventoryAction = async (action, details) => {
+      try {
+        await multilog.value.multilogLogMutation({
+          logLevel: 5,
+          apiToken: multilog.value.apiToken,
+          clientToken: multilog.value.clientToken,
+          gqlToken: multilog.value.gqlToken,
+          userId: driverId,
+          machineId,
+          logPath: `DriverApp.${action}`,
+          logText: details
+        });
+      } catch (error) {
+        console.error('Failed to log inventory action:', error);
+      }
+    };
+    
     const addChannelInput = () => {
       addChannelError.value = false;
       addChannelMessage.value = '';
@@ -717,9 +733,14 @@ export default {
       addMenuItemError,
       addMenuItemOverridePrice,
       addMenuItemProduct,
+      multilog,
+      logInventoryAction
     };
   },
   methods: {
+    selectInput(event) {
+      event.target.select();
+    },
     updateSpoilFields(fieldName, value, index) {
       // Convert the input value to a number. If the conversion fails, default to 0.
       const newValue = Number(value) || 0;
@@ -808,6 +829,7 @@ export default {
           this.savingChannel = 0;
           return false;
         }
+        this.logInventoryAction('SaveInventory',JSON.stringify(input));
         this.savingChannel = 0;
       }
 
@@ -822,6 +844,24 @@ export default {
 }
 </script>
 <style scoped>
+.inventory-row {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.inventory-row:nth-of-type(odd) {
+  background-color: #c8e6c9!important
+}
+.inventory-channel {
+  flex: 1 1 10%;
+  padding: 0.5rem;
+  box-sizing: border-box;
+}
+.inventory-item {
+  flex: 1 1 25%;
+  padding: 0.5rem;
+  box-sizing: border-box;
+}
 .overlay {
   position: fixed;
   top: 0;
@@ -838,5 +878,65 @@ export default {
 .overlay-content {
   text-align: center;
   color: white;
+}
+
+.header-row, .data-row {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.header-item, .data-item {
+  flex: 1 1 25%; /* Adjusted to fit 4 columns */
+  padding: 0.5rem;
+  box-sizing: border-box;
+}
+.header-item {
+  text-align: right;
+}
+
+.category-header {
+  width: 100%;
+  padding: 0.5rem;
+  background-color: #7db57e;
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+.input-label {
+  display: none;
+}
+
+.header-row:nth-of-type(odd) {
+  background-color: #5d8d5e !important;
+}
+.balance-value {
+  width: 100%;
+}
+.bg-green-1 {
+  color: white !important;
+  background-color: #1b5e20 !important;
+}
+
+@media (max-width: 600px) {
+  .header-row {
+    display: none;
+  }
+  .header-item:nth-child(n+2), .data-item:nth-child(n+2) {
+    flex: 1 1 100%; /* Wrap after the first item */
+  }
+  .input-label {
+    display: inline-block;
+    width: 50%; /* Adjust as needed */
+  }
+  .q-input {
+    display: inline-block;
+    flex: 1 1 50%; /* Make input fields take up 50% of their surrounding div */
+  }
+  .balance-value {
+    display: inline-block;
+    width: 50%; /* Adjust as needed */
+  }
 }
 </style>

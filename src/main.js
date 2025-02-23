@@ -5,6 +5,7 @@ import 'quasar/src/css/index.sass'
 import { DefaultApolloClient } from '@vue/apollo-composable'
 import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client/core'
 import App from './App.vue'
+import multilogSetup from './multilog';
 
 // Access the mode the application was built for
 const mode = import.meta.env.MODE;
@@ -48,6 +49,7 @@ const apolloClient = new ApolloClient({
 const app = createApp({
   setup () {
     provide(DefaultApolloClient, apolloClient)
+    provide('multilog', multilogSetup); // Provide 'multilog' so it can be accessed globally
   },
   render: () => h(App),
 });
