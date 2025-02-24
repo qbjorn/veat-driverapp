@@ -251,13 +251,10 @@
             <div v-if="addChannelError" class="text-negative">{{ addChannelMessage }}</div>
           </q-card-section>
           <q-card-section class="q-pt-none">
-            <q-input
+            <q-select
               v-model="newChannel"
-              @focus="selectInput"
+              :options="availableChannelsOptions"
               label="Channel"
-              type="text"
-              inputmode="numeric"
-              pattern="[0-9]*"
             />
           </q-card-section>
           <q-card-section>
@@ -363,7 +360,7 @@
     </div>
 </template>
 <script>
-import { ref, watch, inject } from 'vue'
+import { ref, watch, computed } from 'vue'
 import gql from 'graphql-tag'
 import { useQuery, useMutation } from '@vue/apollo-composable'
 import iconSet from "quasar/icon-set/ionicons-v4";
@@ -496,24 +493,37 @@ export default {
       newRefill.value = 0;
       newMoveIn.value = 0;
     }
+    const availableChannels = computed(() => {
+      const avchannels = machine.value.channels.filter(channel => {
+        const line = inventoryLines.value.find(line => line.channel === channel);
+        return !line || line.setArchive === true;
+      });
+      return avchannels;
+    });
+    const availableChannelsOptions = computed(() => {
+      return availableChannels.value
+        .slice() // Create a copy of the array to avoid mutating the original
+        .sort((a, b) => a - b) // Sort the channels in numerical order
+        .map(channel => ({ label: channel.toString(), value: channel }));
+    });
     const addChannel = () => {
       addChannelMessage.value = '';
-      if (newChannel && newChannel.value) {
+      if (newChannel && newChannel.value && newChannel.value.value) {
         inventoryLines.value.forEach((line) => {
-          const newChannelNumber = parseInt(newChannel.value);
-          // console.log(`Checking ${line.channel} (${typeof line.channel}) against ${newChannelNumber} (${typeof newChannelNumber})`);
+          const newChannelNumber = parseInt(newChannel.value.value);
           if (line.channel === newChannelNumber && line.setArchive !== true) {
             addChannelError.value = true;
             addChannelMessage.value = 'Channel already exists';
           }
         });
         if (!addChannelError.value) {
-          const newChannelNumber = parseInt(newChannel.value);
-          // console.log(`Checking ${machine.value.channels} (${typeof machine.value.channels}) against ${newChannelNumber} (${typeof newChannelNumber})`);
+          const newChannelNumber = parseInt(newChannel.value.value);
           const machineHasChannel = machine.value.channels.includes(newChannelNumber);
           if (!machineHasChannel) {
             addChannelError.value = true;
             addChannelMessage.value = 'Channel does not exist in machine';
+            console.log({newChannelNumber, machineHasChannel})
+            console.log({machine: machine.value.channels})
           }
         }
         if (!addChannelError.value) {
@@ -526,7 +536,7 @@ export default {
         if (!addChannelError.value) {
           inventoryLines.value.push({
             machineId: props.machineId,
-            channel: parseInt(newChannel.value),
+            channel: parseInt(newChannel.value.value),
             productId: newProduct.value.value,
             productName: newProduct.value.label,
             category: newProduct.category,
@@ -751,7 +761,9 @@ export default {
       addMenuItemOverridePrice,
       addMenuItemProduct,
       multilog,
-      logInventoryAction
+      logInventoryAction,
+      availableChannels,
+      availableChannelsOptions,
     };
   },
   methods: {
