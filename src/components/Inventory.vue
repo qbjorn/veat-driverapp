@@ -4,18 +4,17 @@
         <h6
           class="q-pt-1 q-pb-1 q-mt-1 q-mb-1 text-primary"
         >
-          <span class="q-pt-lg">{{ `${currentPage==0?'Waste':'Refill'} for ${machineName} ${machine.isfridge===1?'(Fr.)':'(Ma.)'}` }}</span>
+          <span class="q-pt-lg">{{ `${currentPage==0?'Waste':'Refill'} for ${machineName} ${machine.isfridge===1?'(Fridge)':'(Machine)'}` }}</span>
           <!-- span style="float: right">Show empty <q-checkbox v-model="showEmptyChannels" /></span -->
         </h6>
-        
       </div>
       <div v-if="loadingInventory" class="overlay">
-      <div class="overlay-content">
-        <q-spinner size="50px" />
-        <p>Loading inventory...</p>
+        <div class="overlay-content">
+          <q-spinner size="50px" />
+          <p>Loading inventory...</p>
+        </div>
       </div>
-    </div>
-       <div v-show="!loadingInventory && !savingInventory">
+      <div v-show="!loadingInventory && !savingInventory">
         <div v-show="currentPage==0">
           <!-- buttons -->
           <div class="row q-mb-md q-pb-md q-mt-0">
@@ -31,7 +30,7 @@
             <div class="header-item">Channel & Product Name</div>
             <div class="header-item">Waste</div>
             <div class="header-item">Move to other machine</div>
-            <div class="header-item">Number in machine after waste and move</div>
+            <div class="header-item">Inventory after waste and move</div>
           </div>
           <!-- Inventory Rows -->
           <div
@@ -109,7 +108,7 @@
                 />
               </div>
               <div class="data-item">
-                <label class="input-label">Number in machine after waste and move</label>
+                <label class="input-label">Inventory after waste and move</label>
                 <q-input
                   v-model="inventoryLine.newBalance"
                   @update:model-value="value => updateSpoilBalance(value, index)"
@@ -149,9 +148,9 @@
           <!-- Header Row -->
           <div class="header-row">
             <div class="header-item">Channel & Product Name</div>
+            <div class="header-item">Inventory after waste and move</div>
             <div class="header-item">Refill</div>
             <div class="header-item">Moved in from other machine</div>
-            <div class="header-item">Number in machine after refill and move in</div>
           </div>
 
           <!-- Inventory Rows -->
@@ -182,6 +181,10 @@
                 </div>
             </div>
             <div class="data-item">
+              <label class="input-label">Inventory after waste and move</label>
+              <div style="display: inline-block;text-align: right !important;" class="balance-value q-pt-md text-bold text-right">{{ inventoryLine.newBalance }}</div>
+            </div>
+            <div class="data-item">
               <label class="input-label">Refill</label>
               <q-input
                 v-model="inventoryLine.resupply"
@@ -209,18 +212,14 @@
                 hide-top-space
               />
             </div>            
-            <div class="data-item">
-              <label class="input-label">Number in machine after refill and move in</label>
-              <div style="display: inline-block;text-align: right !important;" class="balance-value q-pt-md text-bold text-right">{{ inventoryLine.newBalance }}</div>
-            </div>
           </div>
           <div class="row q-pb-md q-pt-md q-mt-md">
-            <div class="col-6 text-left q-pl-0 q-ml-0">
+            <div class="col-5 text-left q-pl-0 q-ml-0">
               <!-- <q-btn @click="cancelChanges" class="bg-green-2" label="Cancel " /> -->
               <q-btn @click="currentPage = 0" class="bg-green-2" label="< Back" />
             </div>
-            <div class="col-6 text-right q-pr-0 q-mr-0">
-              <q-btn class="bg-green-2 q-mr-md" @click="addChannelInput" :disabled="savingInventory" label="Add channel" />
+            <div class="col-7 text-right q-pr-0 q-mr-0">
+              <q-btn class="bg-green-2 q-mr-md" @click="addChannelInput" :disabled="savingInventory" label="+ channel" />
               <q-btn @click="saveChanges" :disabled="savingInventory" color="primary" label="Save" />
             </div>
           </div>
@@ -952,12 +951,24 @@ export default {
     width: 50%; /* Adjust as needed */
   }
   .q-input {
+    font-size: 16px !important;
     display: inline-block;
     flex: 1 1 50%; /* Make input fields take up 50% of their surrounding div */
   }
   .balance-value {
     display: inline-block;
     width: 50%; /* Adjust as needed */
+  }
+  .q-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
   }
 }
 </style>
