@@ -764,6 +764,7 @@ export default {
       logInventoryAction,
       availableChannels,
       availableChannelsOptions,
+      refetch,
     };
   },
   methods: {
@@ -856,6 +857,7 @@ export default {
           this.saveMessage = `${err.msg} ${e.message}`;
           this.savingInventory = false;
           this.savingChannel = 0;
+          this.refetch()
           return false;
         }
         this.logInventoryAction('SaveInventory',JSON.stringify(input));
