@@ -6,7 +6,7 @@
       >
         <span class="q-pt-lg">{{ `${currentPage==0?'Waste':'Refill'} for ${machineName} ${machine.isfridge===1?'(Fridge)':'(Machine)'}` }}</span>
         <!-- span style="float: right">Show empty <q-checkbox v-model="showEmptyChannels" /></span -->
-        <p v-if="machineInfo && machineInfo.isOpen !== true">
+        <!-- <p v-if="machineInfo && machineInfo.isOpen !== true">
           Machine is Closed
           <q-btn
             class="bg-green-1 q-ml-md"
@@ -14,7 +14,7 @@
           >
             Open
           </q-btn>
-        </p>
+        </p> -->
       </h6>
     </div>
     <div v-if="loadingInventory" class="overlay">
@@ -744,6 +744,17 @@ export default {
           });
         }
 
+        // --- Count how many lines per product ---
+        const productChannelCount = {};
+        products.forEach(r => {
+          if (r.productId) {
+            productChannelCount[r.productId] = (productChannelCount[r.productId] || 0) + 1;
+          }
+        });
+
+        // --- Track how many times we've assigned for each product ---
+        const productAssignedCount = {};
+
         const productsSorted = sortedGroups.flatMap(group => group.map((r) => {
             odd = !odd;
             if (!r.product.texts.length) return false;
@@ -754,8 +765,17 @@ export default {
             if (!productText || productText == '') {
               `${r.product.id} * MISSING *`
             }
-            // --- Use requested refill if available ---
-            const requestedRefill = requestedRefillMap[r.productId] ?? 0;
+            // --- Use requested refill if available, split if multiple channels ---
+            let requestedRefill = 0;
+            const totalRefill = requestedRefillMap[r.productId] ?? 0;
+            const channelCount = productChannelCount[r.productId] || 1;
+            productAssignedCount[r.productId] = (productAssignedCount[r.productId] || 0) + 1;
+            // Split refill as evenly as possible (integers only)
+            if (totalRefill > 0) {
+              const base = Math.floor(totalRefill / channelCount);
+              const remainder = totalRefill % channelCount;
+              requestedRefill = base + (productAssignedCount[r.productId] <= remainder ? 1 : 0);
+            }
             const res = {
               machineId: props.machineId,
               channel: r.channel,
