@@ -1,175 +1,65 @@
 <template>
-    <div>
-      <div :key="`${machineId}-${machineName}`">
-        <h6
-          class="q-pt-1 q-pb-1 q-mt-1 q-mb-1 text-primary"
+  <div>
+    <div :key="`${machineId}-${machineName}`">
+      <h6
+        class="q-pt-1 q-pb-1 q-mt-1 q-mb-1 text-primary"
+      >
+        <span class="q-pt-lg">{{ `${currentPage==0?'Waste':'Refill'} for ${machineName} ${machine.isfridge===1?'(Fridge)':'(Machine)'}` }}</span>
+        <!-- span style="float: right">Show empty <q-checkbox v-model="showEmptyChannels" /></span -->
+        <p v-if="machineInfo && machineInfo.isOpen !== true">
+          Machine is Closed
+          <q-btn
+            class="bg-green-1 q-ml-md"
+            @click="updateUnlockDate(machineId, 'UNLOCK_DATE', new Date().toISOString())"
+          >
+            Open
+          </q-btn>
+        </p>
+      </h6>
+    </div>
+    <div v-if="loadingInventory" class="overlay">
+      <div class="overlay-content">
+        <q-spinner size="50px" />
+        <p>Loading inventory...</p>
+      </div>
+    </div>
+    <div v-show="!loadingInventory && !savingInventory">
+      <div v-show="currentPage==0">
+        <!-- buttons -->
+        <div class="row q-mb-md q-pb-md q-mt-0">
+          <div class="col-6 text-left q-pl-0 q-ml-0">
+            <q-btn icon="cancel" @click="cancelChanges" class="bg-green-2" label="Cancel" />
+          </div>
+          <div class="col-6 text-right q-pr-0 q-mr-0">
+            <q-btn @click="nextPage" class="bg-green-1" label="Next >" />
+          </div>
+        </div>
+        <!-- Header Row -->
+        <div class="header-row">
+          <div class="header-item">Channel & Product Name</div>
+          <div class="header-item">Waste</div>
+          <div class="header-item">Move to other machine</div>
+          <div class="header-item">Inventory after waste and move</div>
+        </div>
+        <!-- Inventory Rows -->
+        <div
+          v-for="inventoryLine, index in inventoryLines"
+          :key="inventoryLine.channel"
+          class="inventory-row"
         >
-          <span class="q-pt-lg">{{ `${currentPage==0?'Waste':'Refill'} for ${machineName} ${machine.isfridge===1?'(Fridge)':'(Machine)'}` }}</span>
-          <!-- span style="float: right">Show empty <q-checkbox v-model="showEmptyChannels" /></span -->
-        </h6>
-      </div>
-      <div v-if="loadingInventory" class="overlay">
-        <div class="overlay-content">
-          <q-spinner size="50px" />
-          <p>Loading inventory...</p>
-        </div>
-      </div>
-      <div v-show="!loadingInventory && !savingInventory">
-        <div v-show="currentPage==0">
-          <!-- buttons -->
-          <div class="row q-mb-md q-pb-md q-mt-0">
-            <div class="col-6 text-left q-pl-0 q-ml-0">
-              <q-btn icon="cancel" @click="cancelChanges" class="bg-green-2" label="Cancel" />
-            </div>
-            <div class="col-6 text-right q-pr-0 q-mr-0">
-              <q-btn @click="nextPage" class="bg-green-1" label="Next >" />
-            </div>
-          </div>
-          <!-- Header Row -->
-          <div class="header-row">
-            <div class="header-item">Channel & Product Name</div>
-            <div class="header-item">Waste</div>
-            <div class="header-item">Move to other machine</div>
-            <div class="header-item">Inventory after waste and move</div>
-          </div>
-          <!-- Inventory Rows -->
+          <!-- Category Header -->
           <div
-            v-for="inventoryLine, index in inventoryLines"
-            :key="inventoryLine.channel"
-            class="inventory-row"
+            v-if="inventoryLine.groupheader !== ''"
+            class="category-header"
           >
-            <!-- Category Header -->
-            <div
-              v-if="inventoryLine.groupheader !== ''"
-              class="category-header"
-            >
-              <b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b>
-            </div>
-
-            <!-- Data Row -->
-            <div
-              v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine"
-              class="data-row"
-            >
-              <div class="data-item">
-                <div class="text-bold">
-                  <span
-                    class="q-mt-2"
-                    :class="`${inventoryLine.setArchive === true ? 'text-red text-bold text-strike' : ''}`"
-                  >
-                    {{ inventoryLine.channel }}.
-                    &nbsp;&nbsp;{{ inventoryLine.productName }}</span>
-                  <q-btn
-                    v-if="inventoryLine.newBalance == 0 && inventoryLine.setArchive === false"
-                    @click="archiveMachineChannelInput(inventoryLine.channel)"
-                    title="Remove channel"
-                    class="q-mt-0 q-ml-0"
-                    flat
-                    outline
-                    icon="delete"
-                  />
-                  <q-btn
-                    v-if="inventoryLine.newBalance == 0 && inventoryLine.setArchive === true"
-                    @click="inventoryLine.setArchive=false"
-                    title="Undo remove channel"
-                    class="q-mt-0 q-ml-0"
-                    flat
-                    outline
-                    icon="undo"
-                  />
-                </div>
-              </div>
-              <div class="data-item">
-                <label class="input-label">Waste</label>
-                <q-input
-                  v-model="inventoryLine.spoil"
-                  @update:model-value="value => updateSpoilFields('spoil', value, index)"
-                  @focus="selectInput"
-                  input-style="text-align: right"
-                  type="text"
-                  inputmode="numeric"
-                  pattern="[0-9]*"
-                  hide-bottom-space
-                  hide-top-space
-                />
-              </div>
-              <div class="data-item">
-                <label class="input-label">Move to other machine</label>
-                <q-input
-                  v-model="inventoryLine.moveout"
-                  @update:model-value="value => updateSpoilFields('moveout', value, index)"
-                  @focus="selectInput"
-                  input-style="text-align: right;"
-                  type="text"
-                  inputmode="numeric"
-                  pattern="[0-9]*"
-                  hide-bottom-space
-                  hide-top-space
-                />
-              </div>
-              <div class="data-item">
-                <label class="input-label">Inventory after waste and move</label>
-                <q-input
-                  v-model="inventoryLine.newBalance"
-                  @update:model-value="value => updateSpoilBalance(value, index)"
-                  @focus="selectInput"
-                  input-style="text-align: right"
-                  type="text"
-                  inputmode="numeric"
-                  pattern="[0-9]*"
-                  hide-bottom-space
-                  hide-top-space
-                />
-              </div>
-            </div>
-          </div>
-          <div class="row q-pb-md q-pt-md q-mt-md">
-            <div class="col-6 text-left q-pl-0 q-ml-0">
-              <q-btn icon="cancel" @click="cancelChanges" class="bg-green-2" label="Cancel " />
-            </div>
-            <div class="col-6 text-right q-pr-0 q-mr-0">
-              <q-btn @click="nextPage" color="primary" label="Next >" />
-            </div>
-          </div>
-        </div>
-        <!-- Second page - refill and outgoing balance -->
-        <div v-show="currentPage==1">
-          <div class="row q-mb-md q-pb-md q-mt-0">
-            <div class="col-5 text-left q-pl-0 q-ml-0">
-              <q-btn @click="currentPage = 0" class="bg-green-2" label="< Back" />
-              <!-- <q-btn @click="addingMenuItem=true" outline class="border-green-2 q-ml-md" label="+ Menu item" /> -->
-            </div>
-            <div class="col-7 text-right q-pr-0 q-mr-0">
-              <q-btn class="bg-green-2 q-mr-md" @click="addChannelInput" :disabled="savingInventory" label="+ Channel" />
-              <q-btn @click="saveChanges" :disabled="savingInventory" color="primary" label="Save" />
-            </div>
+            <b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b>
           </div>
 
-          <!-- Header Row -->
-          <div class="header-row">
-            <div class="header-item">Channel & Product Name</div>
-            <div class="header-item">Inventory after waste and move</div>
-            <div class="header-item">Refill</div>
-            <div class="header-item">Moved in from other machine</div>
-          </div>
-
-          <!-- Inventory Rows -->
+          <!-- Data Row -->
           <div
-            v-for="inventoryLine, index in inventoryLines"
-            :key="inventoryLine.channel"
-            class="inventory-row"
+            v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine"
+            class="data-row"
           >
-            <!-- New channel header -->
-            <div v-if="inventoryLine.newLine" class="category-header bg-white text-green"><b>ADDED CHANNEL</b></div>
-            <!-- Category Header -->
-            <div
-              v-if="inventoryLine.groupheader !== ''"
-              class="category-header"
-            >
-              <b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b>
-            </div>
-
-            <!-- Data Row -->
             <div class="data-item">
               <div class="text-bold">
                 <span
@@ -178,17 +68,59 @@
                 >
                   {{ inventoryLine.channel }}.
                   &nbsp;&nbsp;{{ inventoryLine.productName }}</span>
-                </div>
+                <q-btn
+                  v-if="inventoryLine.newBalance == 0 && inventoryLine.setArchive === false"
+                  @click="archiveMachineChannelInput(inventoryLine.channel)"
+                  title="Remove channel"
+                  class="q-mt-0 q-ml-0"
+                  flat
+                  outline
+                  icon="delete"
+                />
+                <q-btn
+                  v-if="inventoryLine.newBalance == 0 && inventoryLine.setArchive === true"
+                  @click="inventoryLine.setArchive=false"
+                  title="Undo remove channel"
+                  class="q-mt-0 q-ml-0"
+                  flat
+                  outline
+                  icon="undo"
+                />
+              </div>
+            </div>
+            <div class="data-item">
+              <label class="input-label">Waste</label>
+              <q-input
+                v-model="inventoryLine.spoil"
+                @update:model-value="value => updateSpoilFields('spoil', value, index)"
+                @focus="selectInput"
+                input-style="text-align: right"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                hide-bottom-space
+                hide-top-space
+              />
+            </div>
+            <div class="data-item">
+              <label class="input-label">Move to other machine</label>
+              <q-input
+                v-model="inventoryLine.moveout"
+                @update:model-value="value => updateSpoilFields('moveout', value, index)"
+                @focus="selectInput"
+                input-style="text-align: right;"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                hide-bottom-space
+                hide-top-space
+              />
             </div>
             <div class="data-item">
               <label class="input-label">Inventory after waste and move</label>
-              <div style="display: inline-block;text-align: right !important;" class="balance-value q-pt-md text-bold text-right">{{ inventoryLine.newBalance }}</div>
-            </div>
-            <div class="data-item">
-              <label class="input-label">Refill</label>
               <q-input
-                v-model="inventoryLine.resupply"
-                @update:model-value="value => updateResupplyFields('resupply', value, index)"
+                v-model="inventoryLine.newBalance"
+                @update:model-value="value => updateSpoilBalance(value, index)"
                 @focus="selectInput"
                 input-style="text-align: right"
                 type="text"
@@ -197,170 +129,247 @@
                 hide-bottom-space
                 hide-top-space
               />
-            </div>
-            <div class="data-item">
-              <label class="input-label">Move in from another machine</label>
-              <q-input
-                v-model="inventoryLine.movein"
-                @update:model-value="value => updateResupplyFields('movein', value, index)"
-                @focus="selectInput"
-                input-style="text-align: right"
-                type="text"
-                inputmode="numeric"
-                pattern="[0-9]*"
-                hide-bottom-space
-                hide-top-space
-              />
-            </div>            
-          </div>
-          <div class="row q-pb-md q-pt-md q-mt-md">
-            <div class="col-5 text-left q-pl-0 q-ml-0">
-              <!-- <q-btn @click="cancelChanges" class="bg-green-2" label="Cancel " /> -->
-              <q-btn @click="currentPage = 0" class="bg-green-2" label="< Back" />
-            </div>
-            <div class="col-7 text-right q-pr-0 q-mr-0">
-              <q-btn class="bg-green-2 q-mr-md" @click="addChannelInput" :disabled="savingInventory" label="+ channel" />
-              <q-btn @click="saveChanges" :disabled="savingInventory" color="primary" label="Save" />
             </div>
           </div>
         </div>
+        <div class="row q-pb-md q-pt-md q-mt-md">
+          <div class="col-6 text-left q-pl-0 q-ml-0">
+            <q-btn icon="cancel" @click="cancelChanges" class="bg-green-2" label="Cancel " />
+          </div>
+          <div class="col-6 text-right q-pr-0 q-mr-0">
+            <q-btn @click="nextPage" color="primary" label="Next >" />
+          </div>
+        </div>
       </div>
-      <q-dialog v-model="saveError">
-        <q-card>
-          <q-card-section>
-            <div class="text-h6">Error</div>
-          </q-card-section>
+      <!-- Second page - refill and outgoing balance -->
+      <div v-show="currentPage==1">
+        <div class="row q-mb-md q-pb-md q-mt-0">
+          <div class="col-5 text-left q-pl-0 q-ml-0">
+            <q-btn @click="currentPage = 0" class="bg-green-2" label="< Back" />
+            <!-- <q-btn @click="addingMenuItem=true" outline class="border-green-2 q-ml-md" label="+ Menu item" /> -->
+          </div>
+          <div class="col-7 text-right q-pr-0 q-mr-0">
+            <q-btn class="bg-green-2 q-mr-md" @click="addChannelInput" :disabled="savingInventory" label="+ Channel" />
+            <q-btn @click="saveChanges" :disabled="savingInventory" color="primary" label="Save" />
+          </div>
+        </div>
 
-          <q-card-section class="q-pt-none">
-            {{  saveMessage }}
-          </q-card-section>
+        <!-- Header Row -->
+        <div class="header-row">
+          <div class="header-item">Channel & Product Name</div>
+          <div class="header-item">Inventory after waste and move</div>
+          <div class="header-item">Refill</div>
+          <div class="header-item">Moved in from other machine</div>
+        </div>
 
-          <q-card-actions>
-            <div class="col-12 text-right q-pr-0 q-mr-0">
-              <q-btn @click="saveError=false" color="primary" label="OK" v-close-popup/>
-            </div>
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
-      <q-dialog v-model="addingChannel">
-        <q-card>
-          <q-card-section>
-            <div class="text-h6">Add channel</div>
-          </q-card-section>
-          <q-card-section>
-            <div v-if="addChannelError" class="text-negative">{{ addChannelMessage }}</div>
-          </q-card-section>
-          <q-card-section class="q-pt-none">
-            <q-select
-              v-model="newChannel"
-              :options="availableChannelsOptions"
-              label="Channel"
-            />
-          </q-card-section>
-          <q-card-section>
-            <q-select v-model="newProduct" :options="menuItemProductOptions" label="Product" />
-          </q-card-section>
-          <q-card-section class="q-pt-none">
+        <!-- Inventory Rows -->
+        <div
+          v-for="inventoryLine, index in inventoryLines"
+          :key="inventoryLine.channel"
+          class="inventory-row"
+        >
+          <!-- New channel header -->
+          <div v-if="inventoryLine.newLine" class="category-header bg-white text-green"><b>ADDED CHANNEL</b></div>
+          <!-- Category Header -->
+          <div
+            v-if="inventoryLine.groupheader !== ''"
+            class="category-header"
+          >
+            <b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b>
+          </div>
+
+          <!-- Data Row -->
+          <div class="data-item">
+            <div class="text-bold">
+              <span
+                class="q-mt-2"
+                :class="`${inventoryLine.setArchive === true ? 'text-red text-bold text-strike' : ''}`"
+              >
+                {{ inventoryLine.channel }}.
+                &nbsp;&nbsp;{{ inventoryLine.productName }}</span>
+              </div>
+          </div>
+          <div class="data-item">
+            <label class="input-label">Inventory after waste and move</label>
+            <div style="display: inline-block;text-align: right !important;" class="balance-value q-pt-md text-bold text-right">{{ inventoryLine.newBalance }}</div>
+          </div>
+          <div class="data-item">
+            <label class="input-label">Refill</label>
             <q-input
-              v-model="newRefill"
+              v-model="inventoryLine.resupply"
+              @update:model-value="value => updateResupplyFields('resupply', value, index)"
               @focus="selectInput"
-              label="Refill"
+              input-style="text-align: right"
               type="text"
               inputmode="numeric"
               pattern="[0-9]*"
+              hide-bottom-space
+              hide-top-space
             />
-          </q-card-section>
-          <q-card-section class="q-pt-none">
+          </div>
+          <div class="data-item">
+            <label class="input-label">Move in from another machine</label>
             <q-input
-              v-model="newMoveIn"
+              v-model="inventoryLine.movein"
+              @update:model-value="value => updateResupplyFields('movein', value, index)"
               @focus="selectInput"
-              label="Move In"
+              input-style="text-align: right"
               type="text"
               inputmode="numeric"
               pattern="[0-9]*"
+              hide-bottom-space
+              hide-top-space
             />
-          </q-card-section>
-          <q-card-actions>
-            <div class="col-6 text-left q-pr-0 q-mr-0">
-              <q-btn @click="() => abortAddChannel()" class="bg-green-2" label="Cancel" v-close-popup/>
-            </div>
-            <div class="col-6 text-right q-pr-0 q-mr-0">
-              <q-btn @click="addChannel" color="primary" label="Add"/>
-            </div>
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
-      <q-dialog v-model="archivingChannel">
-        <q-card>
-          <q-card-section>
-            <div class="text-h6">Remove channel</div>
-          </q-card-section>
-          <q-card-section>
-            <div v-if="archiveChannelError" class="text-negative">{{ archiveChannelMessage }}</div>
-          </q-card-section>
-          <q-card-section>
-            <div class="text-negative">Are you sure you want to remove channel {{ archiveChannel }}?</div>
-          </q-card-section>
-          <q-card-actions>
-            <div class="col-6 text-left q-pr-0 q-mr-0">
-              <q-btn @click="() => abortArchiveMachineChannel()" class="bg-green-2" label="Cancel" v-close-popup/>
-            </div>
-            <div class="col-6 text-right q-pr-0 q-mr-0">
-              <q-btn @click="archiveMachineChannel(archiveChannel)" color="primary" label="Remove"/>
-            </div>
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
-      <q-dialog v-model="addingMenuItem">
-        <q-card>
-          <q-card-section>
-            <div class="text-h6">Add Menu Item</div>
-          </q-card-section>
-          <q-card-section>
-            <div v-if="addMenuItemError" class="text-negative">{{ addChannelMessage }}</div>
-          </q-card-section>
-          <q-card-section>
-            <q-select v-model="addMenuItemProduct" :options="allProductsOptions" label="Product" />
-          </q-card-section>
-          <q-card-section class="q-pt-none">
-            <q-input
-              v-model="addMenuItemOverridePrice"
-              @focus="selectInput"
-              label="Override price"
-              type="text"
-              inputmode="numeric"
-              pattern="[0-9]*"
-            />
-          </q-card-section> 
-          <q-card-actions>
-            <div class="col-6 text-left q-pr-0 q-mr-0">
-              <q-btn @click="() => abortAddChannel()" class="bg-green-2" label="Cancel" v-close-popup/>
-            </div>
-            <div class="col-6 text-right q-pr-0 q-mr-0">
-              <q-btn @click="addChannel" color="primary" label="Add"/>
-            </div>
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
-      <q-dialog v-model="savingInventory">
-        <q-card>
-          <q-card-section>
-            <div class="text-h6">Saving inventory</div>
-          </q-card-section>
-          <q-card-section>
-            <q-spinner
-              class="mr-md"
-              color="primary"
-              size="3em"
-              :thickness="2"
-            />Saving channel {{ savingChannel }}...
-          </q-card-section>
-        </q-card>
-      </q-dialog>
+          </div>            
+        </div>
+        <div class="row q-pb-md q-pt-md q-mt-md">
+          <div class="col-5 text-left q-pl-0 q-ml-0">
+            <!-- <q-btn @click="cancelChanges" class="bg-green-2" label="Cancel " /> -->
+            <q-btn @click="currentPage = 0" class="bg-green-2" label="< Back" />
+          </div>
+          <div class="col-7 text-right q-pr-0 q-mr-0">
+            <q-btn class="bg-green-2 q-mr-md" @click="addChannelInput" :disabled="savingInventory" label="+ channel" />
+            <q-btn @click="saveChanges" :disabled="savingInventory" color="primary" label="Save" />
+          </div>
+        </div>
+      </div>
     </div>
+    <q-dialog v-model="saveError">
+      <q-card>
+        <q-card-section>
+          <div class="text-h6">Error</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          {{  saveMessage }}
+        </q-card-section>
+
+        <q-card-actions>
+          <div class="col-12 text-right q-pr-0 q-mr-0">
+            <q-btn @click="saveError=false" color="primary" label="OK" v-close-popup/>
+          </div>
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+    <q-dialog v-model="addingChannel">
+      <q-card>
+        <q-card-section>
+          <div class="text-h6">Add channel</div>
+        </q-card-section>
+        <q-card-section>
+          <div v-if="addChannelError" class="text-negative">{{ addChannelMessage }}</div>
+        </q-card-section>
+        <q-card-section class="q-pt-none">
+          <q-select
+            v-model="newChannel"
+            :options="availableChannelsOptions"
+            label="Channel"
+          />
+        </q-card-section>
+        <q-card-section>
+          <q-select v-model="newProduct" :options="menuItemProductOptions" label="Product" />
+        </q-card-section>
+        <q-card-section class="q-pt-none">
+          <q-input
+            v-model="newRefill"
+            @focus="selectInput"
+            label="Refill"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+          />
+        </q-card-section>
+        <q-card-section class="q-pt-none">
+          <q-input
+            v-model="newMoveIn"
+            @focus="selectInput"
+            label="Move In"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+          />
+        </q-card-section>
+        <q-card-actions>
+          <div class="col-6 text-left q-pr-0 q-mr-0">
+            <q-btn @click="() => abortAddChannel()" class="bg-green-2" label="Cancel" v-close-popup/>
+          </div>
+          <div class="col-6 text-right q-pr-0 q-mr-0">
+            <q-btn @click="addChannel" color="primary" label="Add"/>
+          </div>
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+    <q-dialog v-model="archivingChannel">
+      <q-card>
+        <q-card-section>
+          <div class="text-h6">Remove channel</div>
+        </q-card-section>
+        <q-card-section>
+          <div v-if="archiveChannelError" class="text-negative">{{ archiveChannelMessage }}</div>
+        </q-card-section>
+        <q-card-section>
+          <div class="text-negative">Are you sure you want to remove channel {{ archiveChannel }}?</div>
+        </q-card-section>
+        <q-card-actions>
+          <div class="col-6 text-left q-pr-0 q-mr-0">
+            <q-btn @click="() => abortArchiveMachineChannel()" class="bg-green-2" label="Cancel" v-close-popup/>
+          </div>
+          <div class="col-6 text-right q-pr-0 q-mr-0">
+            <q-btn @click="archiveMachineChannel(archiveChannel)" color="primary" label="Remove"/>
+          </div>
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+    <q-dialog v-model="addingMenuItem">
+      <q-card>
+        <q-card-section>
+          <div class="text-h6">Add Menu Item</div>
+        </q-card-section>
+        <q-card-section>
+          <div v-if="addMenuItemError" class="text-negative">{{ addChannelMessage }}</div>
+        </q-card-section>
+        <q-card-section>
+          <q-select v-model="addMenuItemProduct" :options="allProductsOptions" label="Product" />
+        </q-card-section>
+        <q-card-section class="q-pt-none">
+          <q-input
+            v-model="addMenuItemOverridePrice"
+            @focus="selectInput"
+            label="Override price"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+          />
+        </q-card-section> 
+        <q-card-actions>
+          <div class="col-6 text-left q-pr-0 q-mr-0">
+            <q-btn @click="() => abortAddChannel()" class="bg-green-2" label="Cancel" v-close-popup/>
+          </div>
+          <div class="col-6 text-right q-pr-0 q-mr-0">
+            <q-btn @click="addChannel" color="primary" label="Add"/>
+          </div>
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+    <q-dialog v-model="savingInventory">
+      <q-card>
+        <q-card-section>
+          <div class="text-h6">Saving inventory</div>
+        </q-card-section>
+        <q-card-section>
+          <q-spinner
+            class="mr-md"
+            color="primary"
+            size="3em"
+            :thickness="2"
+          />Saving channel {{ savingChannel }}...
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+  </div>
 </template>
 <script>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, toRefs } from 'vue'
 import gql from 'graphql-tag'
 import { useQuery, useMutation } from '@vue/apollo-composable'
 import iconSet from "quasar/icon-set/ionicons-v4";
@@ -407,6 +416,16 @@ const GET_INVENTORY_QUERY = gql`
     }
   }
 `;
+const GET_REQUSTED_REFILL_QUERY = gql`
+  query GetRequestedRefillPerMachine($refillDate: String!,$machineId: String!){
+    getRequestedRefillPerMachine(refillDate: $refillDate, machineId: $machineId) {
+      refillDate
+      machineId
+      productId
+      numberToRefill
+    }
+  }
+`;
 const GET_PRODUCTS_QUERY = gql`
   query Products {
     products {
@@ -419,13 +438,19 @@ const GET_PRODUCTS_QUERY = gql`
     }
   }
 `;
-
 const UPDATE_EVERYTHING_FOR_ONE_CHANNEL = gql`
   mutation UpdateEverythingForOneChannel($input: updateEverythingLine!) {
     updateEverythingForOneChannel(input: $input)
   }
 `;
 
+const UPDATE_UNLOCK_DATE = gql`
+  mutation UpdateUnlockDate($input: SetMachineConfigInput!) {
+    setMachineConfig(input: $input) {
+      id
+    }
+  }
+`;
 
 export default {
   name: 'Inventory',
@@ -438,6 +463,14 @@ export default {
     machineName: String,
     savingInventory: ref(false),
     multilog: Object,
+    machineInfo: {
+      type: Object,
+      default: null
+    },
+    refillDate: {
+      type: String,
+      required: true
+    }
   },
   data: function() {
     return {
@@ -447,11 +480,20 @@ export default {
     }
   },
   setup(props) {
+    const {
+      driverId,
+      machineId,
+      machineName,
+      savingInventory,
+      multilog,
+      machineInfo,
+      refillDate
+    } = toRefs(props);
     const showEmptyChannels = ref(true)
     const currentPage = ref(0);
-    const savingInventory = props.savingInventory;
-    const machineId = props.machineId;
-    const driverId = props.driverId;
+    // const savingInventory = props.savingInventory;
+    // const machineId = props.machineId;
+    // const driverId = props.driverId;
     const machine = ref({})
     const inventoryLines = ref([]);
     const menuItemProducts = ref([]);
@@ -465,7 +507,9 @@ export default {
     const newMoveIn = ref(0);
     const addChannelError = ref(false);
     const addChannelMessage = ref('');
-    const multilog = ref(props.multilog);
+    // const refillDate = ref(new Date().toISOString().slice(0, 10)); // YYYY-MM-DD format
+
+    // const multilog = ref(props.multilog);
 
     const logInventoryAction = async (action, details) => {
       try {
@@ -483,7 +527,6 @@ export default {
         console.error('Failed to log inventory action:', error);
       }
     };
-    
     const addChannelInput = () => {
       addChannelError.value = false;
       addChannelMessage.value = '';
@@ -606,26 +649,65 @@ export default {
     }
     const { result: machineResult, loading: loadingMachine, error: errorMachine, refetch: refetchMachine } = useQuery(
       GET_MACHINE,
-      { machineByIdId: machineId }
+      () => ({ machineByIdId: machineId.value })
     );
     const { result: menuItemsResult, loading: loadingMenuItems, error: erroMenuItems, refetch: refetchMenuItems } = useQuery(
       GET_MACHINE_MENU_ITEMS,
-      { input: { machineId: machineId, includeUnavailable: true  },
-    })
-    const { result: inventoryResult, loading: loadingInventory, error: errorInventory, refetch } = useQuery(GET_INVENTORY_QUERY, {
-      machineId
-    });
+      () => ({ input: { machineId: machineId.value, includeUnavailable: true  } })
+    );
+    const { result: inventoryResult, loading: loadingInventory, error: errorInventory, refetch } = useQuery(
+      GET_INVENTORY_QUERY,
+      () => ({ machineId: machineId.value })
+    );
+    const {
+      result: requestedRefillResult,
+      loading: loadingRequestedRefill,
+      error: errorRequestedRefill,
+      refetch: refetchRequestedRefill
+    } = useQuery(
+      GET_REQUSTED_REFILL_QUERY,
+      () => ({
+        refillDate: refillDate.value,
+        machineId: machineId.value
+      })
+    );
     const { result: productsResult, loading: loadingProducts, error: errorProducts, refetch: refetchProducts } = useQuery(GET_PRODUCTS_QUERY);
 
     const { mutate: updateEverythingForOneChannel } = useMutation(UPDATE_EVERYTHING_FOR_ONE_CHANNEL);
 
+    const { mutate: updateUnlockDateMutation } = useMutation(UPDATE_UNLOCK_DATE);
+
+    const updateUnlockDate = async (machineId, key, value) => {
+      try {
+        await updateUnlockDateMutation({
+          input: {
+            machineId,
+            key,
+            value,
+          },
+        });
+        // Optionally, show a success message or refetch data here
+      } catch (error) {
+        console.error('Failed to update unlock date:', error);
+        // Optionally, show an error message here
+      }
+    }
+
     // Watch for changes in machineId prop
-    watch(() => props.machineId, async(newMachineId) => {
+    watch(() => props.machineId, async (newMachineId) => {
       currentPage.value = 0;
-      await refetchMachine({ machineByIdId: newMachineId });
+      await refetchMachine({ machineByIdId: newMachineId }); // newMachineId is a value, not a ref here
       await refetch({ machineId: newMachineId });
-      await refetchMenuItems({ input: { machineId: newMachineId }})
+      await refetchMenuItems({ input: { machineId: newMachineId } });
     });
+
+    watch(
+      () => props.machineInfo,
+      (val) => {
+        console.log('Inventory.vue: machineInfo prop changed:', val);
+      },
+      { immediate: true }
+    );
 
     // Watch for changes in the query result
     let odd = false;
@@ -633,7 +715,6 @@ export default {
     watch(() => inventoryResult.value, (newResult) => {
       let thisgroupheader = '';
       if (!loadingInventory.value && newResult) {
-        // console.log({newResult})
         const products = newResult.stockTransactionV2machineInventory.channelInfo.filter(r => r.product)
         // Group products by category, origin
         const grouped = products.reduce((acc, r) => {
@@ -644,19 +725,25 @@ export default {
           }
           return acc;
         }, {});
-        // console.log({ grouped })
-        // Convert grouped object to array and sort by groupKey
         const sortedGroups = Object.keys(grouped)
           .map(String)
           .sort((a, b) => a - b)
           .map(groupKey => grouped[groupKey]);
-        // Sort each group by channel in ascending order
         sortedGroups.forEach((group) => {
-          // console.log(group);
           group.sort((a, b) => a.channel - b.channel);
-        })
-        // console.log({sortedGroups})
-        // Map over sorted groups to get the final array with the required structure
+        });
+
+        // --- Get requested refill mapping ---
+        let requestedRefillMap = {};
+        if (
+          requestedRefillResult.value &&
+          requestedRefillResult.value.getRequestedRefillPerMachine
+        ) {
+          requestedRefillResult.value.getRequestedRefillPerMachine.forEach(refill => {
+            requestedRefillMap[refill.productId] = refill.numberToRefill;
+          });
+        }
+
         const productsSorted = sortedGroups.flatMap(group => group.map((r) => {
             odd = !odd;
             if (!r.product.texts.length) return false;
@@ -667,6 +754,8 @@ export default {
             if (!productText || productText == '') {
               `${r.product.id} * MISSING *`
             }
+            // --- Use requested refill if available ---
+            const requestedRefill = requestedRefillMap[r.productId] ?? 0;
             const res = {
               machineId: props.machineId,
               channel: r.channel,
@@ -678,7 +767,7 @@ export default {
               balance: r.balance,
               spoil: 0,
               moveout: 0,
-              resupply: 0,
+              resupply: requestedRefill,
               movein: 0,
               newBalance: r.balance,
               oldBalance: r.balance,
@@ -692,7 +781,6 @@ export default {
             thisgroupheader = `${r.product.category}${r.product.origin}`;
             return res;
           })).filter(Boolean);      
-          // console.log({productsSorted})
           inventoryLines.value = productsSorted;
       }
     });
@@ -721,8 +809,9 @@ export default {
         machine.value = newMachine.machineById;
       }
     })
-    refetch({ machineId })
-    refetchMenuItems({ input: { machineId: machineId }})
+    refetch({ machineId: machineId.value })
+    refetchMenuItems({ input: { machineId: machineId.value }})
+    const machineInfoUnwrapped = computed(() => machineInfo.value);
     return {
       showEmptyChannels,
       machine,
@@ -765,6 +854,13 @@ export default {
       availableChannels,
       availableChannelsOptions,
       refetch,
+      machineInfo: machineInfoUnwrapped,
+      updateUnlockDate,
+      requestedRefillResult,
+      loadingRequestedRefill,
+      errorRequestedRefill,
+      refetchRequestedRefill,
+      refillDate,
     };
   },
   methods: {

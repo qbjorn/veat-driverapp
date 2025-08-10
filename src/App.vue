@@ -25,7 +25,16 @@
         {{ drivers  }}
         <p v-if="error">Something went wrong...</p>
           <p v-if="!loadingDrivers">
-            <q-select v-model="driver" :options="driverOptions" label="Driver" />
+            <div class="row items-center q-gutter-md">
+              <q-select v-model="driver" :options="driverOptions" label="Driver" class="col" />
+              <q-input
+                v-model="refillDate"
+                type="date"
+                label="Date"
+                :dense="true"
+                style="width: 130px;"
+              />
+            </div>
           </p>
           <p v-else>
             Loading drivers...
@@ -41,9 +50,11 @@
               :driver-id="driver?.value || ''"
               :machine-id="machine.value || ''"
               :machine-name="machine.label || ''"
+              :machine-info="selectedMachineInfo"
               @saved="clearMachine"
               @cancelled="clearMachine"
               :saving-inventory="savingInventory"
+              :refill-date="refillDate"
             />
           </p>
           <p v-show="loadingMachines">
@@ -54,7 +65,7 @@
   </div>
 </template>
 <script>
-import { ref, watch, inject } from 'vue'
+import { ref, watch, computed, inject } from 'vue'
 import { version } from '../package.json';
 import gql from 'graphql-tag'
 import { useQuery } from '@vue/apollo-composable'
@@ -84,6 +95,19 @@ const MACHINES_QUERY = gql`
     }
   }
 `
+
+const MACHINE_BY_ID_QUERY = gql`
+  query MachineById($id: ID!) {
+    machineById(id: $id) {
+      isOpen
+      machineConfigs {
+        key
+        value
+      }
+    }
+  }
+`;
+
 export default {
   name: 'App',
   components: {
@@ -91,12 +115,38 @@ export default {
   },
   data: function() {
     return {
-      machine: null,
       driver: null,
       version: version,
     }
   },
   setup() {
+    const machine = ref(null);
+
+   // 1. Add a ref for the selected machine ID
+    const selectedMachineId = ref(null);
+
+    // 2. Use useQuery for the machine info
+    const { result: machineInfoResult } = useQuery(
+      MACHINE_BY_ID_QUERY,
+      () => ({ id: selectedMachineId.value }),
+      { enabled: computed(() => !!selectedMachineId.value) }
+    );
+    watch(machineInfoResult, (val) => {
+      console.log('App.vue: machineInfoResult changed:', val);
+    });
+
+    // 3. Watch machine and update selectedMachineId
+    watch(machine, (newMachine) => {
+      selectedMachineId.value = newMachine?.value || null;
+    });
+
+    // 4. Computed for the machine info
+    const selectedMachineInfo = computed(() => machineInfoResult.value?.machineById || null);
+
+    watch(selectedMachineInfo, (val) => {
+      console.log('App.vue: selectedMachineInfo computed:', val);
+    });
+
     const multilog = inject('multilog');
     const savingInventory = ref(false);
     const driverOptions = ref([]);
@@ -117,7 +167,7 @@ export default {
         .sort((a, b) => a.label.localeCompare(b.label));
       }
       refetchMachines({ activeOnly: true })
-    });   
+    });
     const machineOptions = ref([]);
     const {
       result: machines,
@@ -125,6 +175,7 @@ export default {
       error: errorMachines,
       refetch: refetchMachines,
     } = useQuery(MACHINES_QUERY, { activeOnly: true });
+
     // Populate machine options
     watch(() => machines.value, (newValue, oldValue) => {
       if (!loadingMachines.value && newValue) {
@@ -137,7 +188,11 @@ export default {
       }
     });
 
+    // Add refillDate ref for date input
+    const refillDate = ref(new Date().toISOString().slice(0, 10)); // YYYY-MM-DD format
+
     return {
+      machine,
       machines,
       loadingMachines,
       errorDrivers,
@@ -145,6 +200,8 @@ export default {
       machineOptions,
       driverOptions,
       savingInventory,
+      selectedMachineInfo,
+      refillDate,
     };
   },
   methods: {
