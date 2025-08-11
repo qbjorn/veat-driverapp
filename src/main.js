@@ -10,7 +10,7 @@ import multilogSetup from './multilog';
 // Access the mode the application was built for
 const mode = import.meta.env.MODE;
 
-const apiUrl = mode === 'dev' ? 'http://ubuntu-ai:9000/graphql' : mode === 'stage' ? 'https://stage.veat.se/graphql/': 'https://veat.se/graphql/';
+const apiUrl = mode === 'dev' ? 'http://localhost:9000/graphql' : mode === 'stage' ? 'https://stage.veat.se/graphql/': 'https://veat.se/graphql/';
 // const apiUrl = 'https://veat.se/graphql/';
 
 const cache = new InMemoryCache()
