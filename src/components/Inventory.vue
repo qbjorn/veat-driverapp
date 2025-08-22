@@ -792,9 +792,9 @@ export default {
               newBalance: r.balance,
               oldBalance: r.balance,
               odd: odd,
-              dirty: false,
+              dirty: requestedRefill > 0,
               spoilDirty: false,
-              resupplyDirty: false,
+              resupplyDirty: requestedRefill > 0,
               newLine: false,
               setArchive: false,
             };
