@@ -45,17 +45,18 @@
         <p v-if="error">Something went wrong...</p>
           <p v-show="!loadingMachines">
             <q-select v-model="machine" :options="machineOptions" label="Location" />
-            <Inventory
-              v-if="driver && machine !== null"
-              :driver-id="driver?.value || ''"
-              :machine-id="machine.value || ''"
-              :machine-name="machine.label || ''"
-              :machine-info="selectedMachineInfo"
-              @saved="clearMachine"
-              @cancelled="clearMachine"
-              :saving-inventory="savingInventory"
-              :refill-date="refillDate"
-            />
+<Inventory
+  v-if="driver && machine !== null"
+  :driver-id="driver?.value || ''"
+  :machine-id="machine.value || ''"
+  :machine-name="machine.label || ''"
+  :machine-info="selectedMachineInfo"
+  @saved="clearMachine"
+  @cancelled="clearMachine"
+  :saving-inventory="savingInventory"
+  :refill-date="refillDate"
+  @refetch-machine-info="refetchMachineInfo"
+/>
           </p>
           <p v-show="loadingMachines">
             Loading machines...
@@ -122,11 +123,11 @@ export default {
   setup() {
     const machine = ref(null);
 
-   // 1. Add a ref for the selected machine ID
+    // 1. Add a ref for the selected machine ID
     const selectedMachineId = ref(null);
 
     // 2. Use useQuery for the machine info
-    const { result: machineInfoResult } = useQuery(
+    const { result: machineInfoResult, refetch: refetchMachineInfo } = useQuery(
       MACHINE_BY_ID_QUERY,
       () => ({ id: selectedMachineId.value }),
       { enabled: computed(() => !!selectedMachineId.value) }
@@ -191,6 +192,7 @@ export default {
     // Add refillDate ref for date input
     const refillDate = ref(new Date().toISOString().slice(0, 10)); // YYYY-MM-DD format
 
+    // --- ADD THIS: expose refetchMachineInfo for event handler ---
     return {
       machine,
       machines,
@@ -202,12 +204,14 @@ export default {
       savingInventory,
       selectedMachineInfo,
       refillDate,
+      refetchMachineInfo, // <--- expose for event
     };
   },
   methods: {
     clearMachine() {
       this.machine = null;
     },
+    // No need to add refetchMachineInfo here, it's exposed from setup
   }
 }
 

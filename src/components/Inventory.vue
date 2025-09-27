@@ -1,20 +1,23 @@
 <template>
   <div>
     <div :key="`${machineId}-${machineName}`">
-      <h6
-        class="q-pt-1 q-pb-1 q-mt-1 q-mb-1 text-primary"
-      >
-        <span class="q-pt-lg">{{ `${currentPage==0?'Waste':'Refill'} for ${machineName} ${machine.isfridge===1?'(Fridge)':'(Machine)'}` }}</span>
-        <!-- span style="float: right">Show empty <q-checkbox v-model="showEmptyChannels" /></span -->
-        <!-- <p v-if="machineInfo && machineInfo.isOpen !== true">
-          Machine is Closed
-          <q-btn
-            class="bg-green-1 q-ml-md"
-            @click="updateUnlockDate(machineId, 'UNLOCK_DATE', new Date().toISOString())"
-          >
-            Open
-          </q-btn>
-        </p> -->
+      <h6 class="q-pt-1 q-pb-1 q-mt-1 q-mb-1 text-primary">
+        <span class="q-pt-lg">{{ `${currentPage == 0 ? 'Waste' : 'Refill'} for ${machineName}
+          ${machine.isfridge === 1 ? '(Fridge)' : '(Machine)'}` }}</span>
+        <p v-if="machine.isfridge && machineInfo">
+          <span class="text-red" v-if="machineInfo.isOpen !== true">
+            Machine is Closed
+            <q-btn class="bg-green-1 q-ml-md" @click="openMachine">
+              Open
+            </q-btn>
+          </span>
+          <span v-else>
+            Machine is Open
+            <q-btn class="bg-red-1 q-ml-md" @click="closeMachine">
+              Close
+            </q-btn>
+          </span>
+        </p>
       </h6>
     </div>
     <div v-if="loadingInventory" class="overlay">
@@ -24,7 +27,7 @@
       </div>
     </div>
     <div v-show="!loadingInventory && !savingInventory">
-      <div v-show="currentPage==0">
+      <div v-show="currentPage == 0">
         <!-- buttons -->
         <div class="row q-mb-md q-pb-md q-mt-0">
           <div class="col-6 text-left q-pl-0 q-ml-0">
@@ -42,93 +45,48 @@
           <div class="header-item">Inventory after waste and move</div>
         </div>
         <!-- Inventory Rows -->
-        <div
-          v-for="inventoryLine, index in inventoryLines"
-          :key="inventoryLine.channel"
-          class="inventory-row"
-        >
+        <div v-for="inventoryLine, index in inventoryLines" :key="inventoryLine.channel" class="inventory-row">
           <!-- Category Header -->
-          <div
-            v-if="inventoryLine.groupheader !== ''"
-            class="category-header"
-          >
+          <div v-if="inventoryLine.groupheader !== ''" class="category-header">
             <b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b>
           </div>
 
           <!-- Data Row -->
-          <div
-            v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine"
-            class="data-row"
-          >
+          <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="data-row">
             <div class="data-item">
               <div class="text-bold">
-                <span
-                  class="q-mt-2"
-                  :class="`${inventoryLine.setArchive === true ? 'text-red text-bold text-strike' : ''}`"
-                >
+                <span class="q-mt-2"
+                  :class="`${inventoryLine.setArchive === true ? 'text-red text-bold text-strike' : ''}`">
                   {{ inventoryLine.channel }}.
                   &nbsp;&nbsp;{{ inventoryLine.productName }}</span>
-                <q-btn
-                  v-if="inventoryLine.newBalance == 0 && inventoryLine.setArchive === false"
-                  @click="archiveMachineChannelInput(inventoryLine.channel)"
-                  title="Remove channel"
-                  class="q-mt-0 q-ml-0"
-                  flat
-                  outline
-                  icon="delete"
-                />
-                <q-btn
-                  v-if="inventoryLine.newBalance == 0 && inventoryLine.setArchive === true"
-                  @click="inventoryLine.setArchive=false"
-                  title="Undo remove channel"
-                  class="q-mt-0 q-ml-0"
-                  flat
-                  outline
-                  icon="undo"
-                />
+                <q-btn v-if="inventoryLine.newBalance == 0 && inventoryLine.setArchive === false"
+                  @click="archiveMachineChannelInput(inventoryLine.channel)" title="Remove channel"
+                  class="q-mt-0 q-ml-0" flat outline icon="delete" />
+                <q-btn v-if="inventoryLine.newBalance == 0 && inventoryLine.setArchive === true"
+                  @click="inventoryLine.setArchive = false" title="Undo remove channel" class="q-mt-0 q-ml-0" flat
+                  outline icon="undo" />
               </div>
             </div>
             <div class="data-item">
               <label class="input-label">Waste</label>
-              <q-input
-                v-model="inventoryLine.spoil"
-                @update:model-value="value => updateSpoilFields('spoil', value, index)"
-                @focus="selectInput"
-                input-style="text-align: right"
-                type="text"
-                inputmode="numeric"
-                pattern="[0-9]*"
-                hide-bottom-space
-                hide-top-space
-              />
+              <q-input v-model="inventoryLine.spoil"
+                @update:model-value="value => updateSpoilFields('spoil', value, index)" @focus="selectInput"
+                input-style="text-align: right" type="text" inputmode="numeric" pattern="[0-9]*" hide-bottom-space
+                hide-top-space />
             </div>
             <div class="data-item">
               <label class="input-label">Move to other machine</label>
-              <q-input
-                v-model="inventoryLine.moveout"
-                @update:model-value="value => updateSpoilFields('moveout', value, index)"
-                @focus="selectInput"
-                input-style="text-align: right;"
-                type="text"
-                inputmode="numeric"
-                pattern="[0-9]*"
-                hide-bottom-space
-                hide-top-space
-              />
+              <q-input v-model="inventoryLine.moveout"
+                @update:model-value="value => updateSpoilFields('moveout', value, index)" @focus="selectInput"
+                input-style="text-align: right;" type="text" inputmode="numeric" pattern="[0-9]*" hide-bottom-space
+                hide-top-space />
             </div>
             <div class="data-item">
               <label class="input-label">Inventory after waste and move</label>
-              <q-input
-                v-model="inventoryLine.newBalance"
-                @update:model-value="value => updateSpoilBalance(value, index)"
-                @focus="selectInput"
-                input-style="text-align: right"
-                type="text"
-                inputmode="numeric"
-                pattern="[0-9]*"
-                hide-bottom-space
-                hide-top-space
-              />
+              <q-input v-model="inventoryLine.newBalance"
+                @update:model-value="value => updateSpoilBalance(value, index)" @focus="selectInput"
+                input-style="text-align: right" type="text" inputmode="numeric" pattern="[0-9]*" hide-bottom-space
+                hide-top-space />
             </div>
           </div>
         </div>
@@ -142,7 +100,7 @@
         </div>
       </div>
       <!-- Second page - refill and outgoing balance -->
-      <div v-show="currentPage==1">
+      <div v-show="currentPage == 1">
         <div class="row q-mb-md q-pb-md q-mt-0">
           <div class="col-5 text-left q-pl-0 q-ml-0">
             <q-btn @click="currentPage = 0" class="bg-green-2" label="< Back" />
@@ -163,64 +121,42 @@
         </div>
 
         <!-- Inventory Rows -->
-        <div
-          v-for="inventoryLine, index in inventoryLines"
-          :key="inventoryLine.channel"
-          class="inventory-row"
-        >
+        <div v-for="inventoryLine, index in inventoryLines" :key="inventoryLine.channel" class="inventory-row">
           <!-- New channel header -->
           <div v-if="inventoryLine.newLine" class="category-header bg-white text-green"><b>ADDED CHANNEL</b></div>
           <!-- Category Header -->
-          <div
-            v-if="inventoryLine.groupheader !== ''"
-            class="category-header"
-          >
+          <div v-if="inventoryLine.groupheader !== ''" class="category-header">
             <b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b>
           </div>
 
           <!-- Data Row -->
           <div class="data-item">
             <div class="text-bold">
-              <span
-                class="q-mt-2"
-                :class="`${inventoryLine.setArchive === true ? 'text-red text-bold text-strike' : ''}`"
-              >
+              <span class="q-mt-2"
+                :class="`${inventoryLine.setArchive === true ? 'text-red text-bold text-strike' : ''}`">
                 {{ inventoryLine.channel }}.
                 &nbsp;&nbsp;{{ inventoryLine.productName }}</span>
-              </div>
+            </div>
           </div>
           <div class="data-item">
             <label class="input-label">Inventory after waste and move</label>
-            <div style="display: inline-block;text-align: right !important;" class="balance-value q-pt-md text-bold text-right">{{ inventoryLine.newBalance }}</div>
+            <div style="display: inline-block;text-align: right !important;"
+              class="balance-value q-pt-md text-bold text-right">{{ inventoryLine.newBalance }}</div>
           </div>
           <div class="data-item">
             <label class="input-label">Refill</label>
-            <q-input
-              v-model="inventoryLine.resupply"
-              @update:model-value="value => updateResupplyFields('resupply', value, index)"
-              @focus="selectInput"
-              input-style="text-align: right"
-              type="text"
-              inputmode="numeric"
-              pattern="[0-9]*"
-              hide-bottom-space
-              hide-top-space
-            />
+            <q-input v-model="inventoryLine.resupply"
+              @update:model-value="value => updateResupplyFields('resupply', value, index)" @focus="selectInput"
+              input-style="text-align: right" type="text" inputmode="numeric" pattern="[0-9]*" hide-bottom-space
+              hide-top-space />
           </div>
           <div class="data-item">
             <label class="input-label">Move in from another machine</label>
-            <q-input
-              v-model="inventoryLine.movein"
-              @update:model-value="value => updateResupplyFields('movein', value, index)"
-              @focus="selectInput"
-              input-style="text-align: right"
-              type="text"
-              inputmode="numeric"
-              pattern="[0-9]*"
-              hide-bottom-space
-              hide-top-space
-            />
-          </div>            
+            <q-input v-model="inventoryLine.movein"
+              @update:model-value="value => updateResupplyFields('movein', value, index)" @focus="selectInput"
+              input-style="text-align: right" type="text" inputmode="numeric" pattern="[0-9]*" hide-bottom-space
+              hide-top-space />
+          </div>
         </div>
         <div class="row q-pb-md q-pt-md q-mt-md">
           <div class="col-5 text-left q-pl-0 q-ml-0">
@@ -241,12 +177,12 @@
         </q-card-section>
 
         <q-card-section class="q-pt-none">
-          {{  saveMessage }}
+          {{ saveMessage }}
         </q-card-section>
 
         <q-card-actions>
           <div class="col-12 text-right q-pr-0 q-mr-0">
-            <q-btn @click="saveError=false" color="primary" label="OK" v-close-popup/>
+            <q-btn @click="saveError = false" color="primary" label="OK" v-close-popup />
           </div>
         </q-card-actions>
       </q-card>
@@ -260,41 +196,25 @@
           <div v-if="addChannelError" class="text-negative">{{ addChannelMessage }}</div>
         </q-card-section>
         <q-card-section class="q-pt-none">
-          <q-select
-            v-model="newChannel"
-            :options="availableChannelsOptions"
-            label="Channel"
-          />
+          <q-select v-model="newChannel" :options="availableChannelsOptions" label="Channel" />
         </q-card-section>
         <q-card-section>
           <q-select v-model="newProduct" :options="menuItemProductOptions" label="Product" />
         </q-card-section>
         <q-card-section class="q-pt-none">
-          <q-input
-            v-model="newRefill"
-            @focus="selectInput"
-            label="Refill"
-            type="text"
-            inputmode="numeric"
-            pattern="[0-9]*"
-          />
+          <q-input v-model="newRefill" @focus="selectInput" label="Refill" type="text" inputmode="numeric"
+            pattern="[0-9]*" />
         </q-card-section>
         <q-card-section class="q-pt-none">
-          <q-input
-            v-model="newMoveIn"
-            @focus="selectInput"
-            label="Move In"
-            type="text"
-            inputmode="numeric"
-            pattern="[0-9]*"
-          />
+          <q-input v-model="newMoveIn" @focus="selectInput" label="Move In" type="text" inputmode="numeric"
+            pattern="[0-9]*" />
         </q-card-section>
         <q-card-actions>
           <div class="col-6 text-left q-pr-0 q-mr-0">
-            <q-btn @click="() => abortAddChannel()" class="bg-green-2" label="Cancel" v-close-popup/>
+            <q-btn @click="() => abortAddChannel()" class="bg-green-2" label="Cancel" v-close-popup />
           </div>
           <div class="col-6 text-right q-pr-0 q-mr-0">
-            <q-btn @click="addChannel" color="primary" label="Add"/>
+            <q-btn @click="addChannel" color="primary" label="Add" />
           </div>
         </q-card-actions>
       </q-card>
@@ -312,10 +232,10 @@
         </q-card-section>
         <q-card-actions>
           <div class="col-6 text-left q-pr-0 q-mr-0">
-            <q-btn @click="() => abortArchiveMachineChannel()" class="bg-green-2" label="Cancel" v-close-popup/>
+            <q-btn @click="() => abortArchiveMachineChannel()" class="bg-green-2" label="Cancel" v-close-popup />
           </div>
           <div class="col-6 text-right q-pr-0 q-mr-0">
-            <q-btn @click="archiveMachineChannel(archiveChannel)" color="primary" label="Remove"/>
+            <q-btn @click="archiveMachineChannel(archiveChannel)" color="primary" label="Remove" />
           </div>
         </q-card-actions>
       </q-card>
@@ -332,21 +252,15 @@
           <q-select v-model="addMenuItemProduct" :options="allProductsOptions" label="Product" />
         </q-card-section>
         <q-card-section class="q-pt-none">
-          <q-input
-            v-model="addMenuItemOverridePrice"
-            @focus="selectInput"
-            label="Override price"
-            type="text"
-            inputmode="numeric"
-            pattern="[0-9]*"
-          />
-        </q-card-section> 
+          <q-input v-model="addMenuItemOverridePrice" @focus="selectInput" label="Override price" type="text"
+            inputmode="numeric" pattern="[0-9]*" />
+        </q-card-section>
         <q-card-actions>
           <div class="col-6 text-left q-pr-0 q-mr-0">
-            <q-btn @click="() => abortAddChannel()" class="bg-green-2" label="Cancel" v-close-popup/>
+            <q-btn @click="() => abortAddChannel()" class="bg-green-2" label="Cancel" v-close-popup />
           </div>
           <div class="col-6 text-right q-pr-0 q-mr-0">
-            <q-btn @click="addChannel" color="primary" label="Add"/>
+            <q-btn @click="addChannel" color="primary" label="Add" />
           </div>
         </q-card-actions>
       </q-card>
@@ -357,12 +271,7 @@
           <div class="text-h6">Saving inventory</div>
         </q-card-section>
         <q-card-section>
-          <q-spinner
-            class="mr-md"
-            color="primary"
-            size="3em"
-            :thickness="2"
-          />Saving channel {{ savingChannel }}...
+          <q-spinner class="mr-md" color="primary" size="3em" :thickness="2" />Saving channel {{ savingChannel }}...
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -444,9 +353,17 @@ const UPDATE_EVERYTHING_FOR_ONE_CHANNEL = gql`
   }
 `;
 
-const UPDATE_UNLOCK_DATE = gql`
-  mutation UpdateUnlockDate($input: SetMachineConfigInput!) {
-    setMachineConfig(input: $input) {
+const CLOSE_MACHINE = gql`
+  mutation CloseMachine($input: UpdatePingInput!) {
+    updatePing(input: $input) {
+      id
+    }
+  }
+`;
+
+const OPEN_MACHINE = gql`
+  mutation OpenMachine($input: UpdatePingInput!) {
+    updatePing(input: $input) {
       id
     }
   }
@@ -472,14 +389,14 @@ export default {
       required: true
     }
   },
-  data: function() {
+  data: function () {
     return {
       savingSpoil: false,
       savingResupply: false,
       savingChannel: 0,
     }
   },
-  setup(props) {
+  setup(props, { emit }) {
     const {
       driverId,
       machineId,
@@ -491,9 +408,6 @@ export default {
     } = toRefs(props);
     const showEmptyChannels = ref(true)
     const currentPage = ref(0);
-    // const savingInventory = props.savingInventory;
-    // const machineId = props.machineId;
-    // const driverId = props.driverId;
     const machine = ref({})
     const inventoryLines = ref([]);
     const menuItemProducts = ref([]);
@@ -565,8 +479,8 @@ export default {
           if (!machineHasChannel) {
             addChannelError.value = true;
             addChannelMessage.value = 'Channel does not exist in machine';
-            console.log({newChannelNumber, machineHasChannel})
-            console.log({machine: machine.value.channels})
+            console.log({ newChannelNumber, machineHasChannel })
+            console.log({ machine: machine.value.channels })
           }
         }
         if (!addChannelError.value) {
@@ -623,14 +537,14 @@ export default {
     const addMenuItemError = ref(false);
     const addMenuItemOverridePrice = ref(0);
     const addMenuItemProduct = ref('');
-    
+
     const archiveMachineChannelInput = (channel) => {
       archiveChannelError.value = false;
       archiveChannelMessage.value = '';
       archivingChannel.value = true;
       archiveChannel.value = channel;
     }
-    const archiveMachineChannel = async(channel) => {
+    const archiveMachineChannel = async (channel) => {
       const index = inventoryLines.value.findIndex(line => line.channel === channel);
       if (index !== -1 && inventoryLines.value[index].newBalance === 0) {
         inventoryLines.value[index].setArchive = true;
@@ -653,7 +567,7 @@ export default {
     );
     const { result: menuItemsResult, loading: loadingMenuItems, error: erroMenuItems, refetch: refetchMenuItems } = useQuery(
       GET_MACHINE_MENU_ITEMS,
-      () => ({ input: { machineId: machineId.value, includeUnavailable: true  } })
+      () => ({ input: { machineId: machineId.value, includeUnavailable: true } })
     );
     const { result: inventoryResult, loading: loadingInventory, error: errorInventory, refetch } = useQuery(
       GET_INVENTORY_QUERY,
@@ -675,23 +589,9 @@ export default {
 
     const { mutate: updateEverythingForOneChannel } = useMutation(UPDATE_EVERYTHING_FOR_ONE_CHANNEL);
 
-    const { mutate: updateUnlockDateMutation } = useMutation(UPDATE_UNLOCK_DATE);
-
-    const updateUnlockDate = async (machineId, key, value) => {
-      try {
-        await updateUnlockDateMutation({
-          input: {
-            machineId,
-            key,
-            value,
-          },
-        });
-        // Optionally, show a success message or refetch data here
-      } catch (error) {
-        console.error('Failed to update unlock date:', error);
-        // Optionally, show an error message here
-      }
-    }
+    // --- CHANGED: Use useMutation for open/close machine ---
+    const { mutate: openMachineMutate } = useMutation(OPEN_MACHINE);
+    const { mutate: closeMachineMutate } = useMutation(CLOSE_MACHINE);
 
     // Watch for changes in machineId prop
     watch(() => props.machineId, async (newMachineId) => {
@@ -711,7 +611,7 @@ export default {
 
     // Watch for changes in the query result
     let odd = false;
-    
+
     watch(() => inventoryResult.value, (newResult) => {
       let thisgroupheader = '';
       if (!loadingInventory.value && newResult) {
@@ -756,57 +656,57 @@ export default {
         const productAssignedCount = {};
 
         const productsSorted = sortedGroups.flatMap(group => group.map((r) => {
-            odd = !odd;
-            if (!r.product.texts.length) return false;
-            let productText = r.product.texts[0].name;
-            if (!productText || productText == '') {
-              productText = r.product.texts[1].name;
-            }
-            if (!productText || productText == '') {
-              `${r.product.id} * MISSING *`
-            }
-            // --- Use requested refill if available, split if multiple channels ---
-            let requestedRefill = 0;
-            const totalRefill = requestedRefillMap[r.productId] ?? 0;
-            const channelCount = productChannelCount[r.productId] || 1;
-            productAssignedCount[r.productId] = (productAssignedCount[r.productId] || 0) + 1;
-            // Split refill as evenly as possible (integers only)
-            if (totalRefill > 0) {
-              const base = Math.floor(totalRefill / channelCount);
-              const remainder = totalRefill % channelCount;
-              requestedRefill = base + (productAssignedCount[r.productId] <= remainder ? 1 : 0);
-            }
-            const res = {
-              machineId: props.machineId,
-              channel: r.channel,
-              productId: r.productId,
-              productName: productText,
-              category: r.product.category,
-              origin: r.product.origin,
-              groupheader: `${r.product.category}${r.product.origin}` !== thisgroupheader ? `${r.product.category}${r.product.origin}` : '',
-              balance: r.balance,
-              spoil: 0,
-              moveout: 0,
-              resupply: requestedRefill,
-              movein: 0,
-              newBalance: r.balance,
-              oldBalance: r.balance,
-              odd: odd,
-              dirty: requestedRefill > 0,
-              spoilDirty: false,
-              resupplyDirty: requestedRefill > 0,
-              newLine: false,
-              setArchive: false,
-            };
-            thisgroupheader = `${r.product.category}${r.product.origin}`;
-            return res;
-          })).filter(Boolean);      
-          inventoryLines.value = productsSorted;
+          odd = !odd;
+          if (!r.product.texts.length) return false;
+          let productText = r.product.texts[0].name;
+          if (!productText || productText == '') {
+            productText = r.product.texts[1].name;
+          }
+          if (!productText || productText == '') {
+            `${r.product.id} * MISSING *`
+          }
+          // --- Use requested refill if available, split if multiple channels ---
+          let requestedRefill = 0;
+          const totalRefill = requestedRefillMap[r.productId] ?? 0;
+          const channelCount = productChannelCount[r.productId] || 1;
+          productAssignedCount[r.productId] = (productAssignedCount[r.productId] || 0) + 1;
+          // Split refill as evenly as possible (integers only)
+          if (totalRefill > 0) {
+            const base = Math.floor(totalRefill / channelCount);
+            const remainder = totalRefill % channelCount;
+            requestedRefill = base + (productAssignedCount[r.productId] <= remainder ? 1 : 0);
+          }
+          const res = {
+            machineId: props.machineId,
+            channel: r.channel,
+            productId: r.productId,
+            productName: productText,
+            category: r.product.category,
+            origin: r.product.origin,
+            groupheader: `${r.product.category}${r.product.origin}` !== thisgroupheader ? `${r.product.category}${r.product.origin}` : '',
+            balance: r.balance,
+            spoil: 0,
+            moveout: 0,
+            resupply: requestedRefill,
+            movein: 0,
+            newBalance: r.balance,
+            oldBalance: r.balance,
+            odd: odd,
+            dirty: requestedRefill > 0,
+            spoilDirty: false,
+            resupplyDirty: requestedRefill > 0,
+            newLine: false,
+            setArchive: false,
+          };
+          thisgroupheader = `${r.product.category}${r.product.origin}`;
+          return res;
+        })).filter(Boolean);
+        inventoryLines.value = productsSorted;
       }
     });
     watch(() => menuItemsResult.value, (newMenuItems) => {
       if (!loadingMenuItems.value && newMenuItems) {
-        menuItemProducts.value = newMenuItems.menuItemsByMachineId.map( m => m.product.id );
+        menuItemProducts.value = newMenuItems.menuItemsByMachineId.map(m => m.product.id);
         menuItemProductOptions.value = newMenuItems.menuItemsByMachineId.map((m) => {
           let productText = m.product.texts[0].name;
           if (!productText || productText == '') {
@@ -830,8 +730,39 @@ export default {
       }
     })
     refetch({ machineId: machineId.value })
-    refetchMenuItems({ input: { machineId: machineId.value }})
+    refetchMenuItems({ input: { machineId: machineId.value } })
     const machineInfoUnwrapped = computed(() => machineInfo.value);
+
+    // FIX: Use emit instead of this.$emit in setup
+    const openMachine = async () => {
+      try {
+        await openMachineMutate({
+          input: {
+            machineId: machineId.value,
+            isOpen: true
+          }
+        });
+        emit('refetch-machine-info');
+      } catch (e) {
+        saveError.value = true;
+        saveMessage.value = `Could not open machine: ${e.message}`;
+      }
+    };
+    const closeMachine = async () => {
+      try {
+        await closeMachineMutate({
+          input: {
+            machineId: machineId.value,
+            isOpen: false
+          }
+        });
+        emit('refetch-machine-info');
+      } catch (e) {
+        saveError.value = true;
+        saveMessage.value = `Could not close machine: ${e.message}`;
+      }
+    };
+
     return {
       showEmptyChannels,
       machine,
@@ -875,12 +806,13 @@ export default {
       availableChannelsOptions,
       refetch,
       machineInfo: machineInfoUnwrapped,
-      updateUnlockDate,
       requestedRefillResult,
       loadingRequestedRefill,
       errorRequestedRefill,
       refetchRequestedRefill,
       refillDate,
+      openMachine,
+      closeMachine,
     };
   },
   methods: {
@@ -888,24 +820,21 @@ export default {
       event.target.select();
     },
     updateSpoilFields(fieldName, value, index) {
-      // Convert the input value to a number. If the conversion fails, default to 0.
       const newValue = Number(value) || 0;
       this.inventoryLines[index][fieldName] = newValue;
       this.inventoryLines[index].spoilDirty = true;
-      this.inventoryLines[index].newBalance = 
+      this.inventoryLines[index].newBalance =
         parseInt(this.inventoryLines[index].oldBalance) -
         (parseInt(this.inventoryLines[index].spoil) +
-        parseInt(this.inventoryLines[index].moveout)
-      );
+          parseInt(this.inventoryLines[index].moveout)
+        );
     },
     updateSpoilBalance(value, index) {
-      // Convert the input value to a number. If the conversion fails, default to 0.
       const newValue = Number(value) || 0;
       this.inventoryLines[index].newBalance = newValue;
       this.inventoryLines[index].spoilDirty = true;
     },
     updateResupplyFields(fieldName, value, index) {
-      // Convert the input value to a number. If the conversion fails, default to 0.
       const newValue = Number(value) || 0;
       this.inventoryLines[index][fieldName] = newValue;
       this.inventoryLines[index].resupplyDirty = true;
@@ -917,14 +846,12 @@ export default {
     },
     sortInventoryLines() {
       this.inventoryLines.sort((a, b) => {
-        // Sort by channel
         if (a.channel < b.channel) {
           return -1;
         }
         if (a.channel > b.channel) {
           return 1;
         }
-        // If Channel is the same, sort by newLine
         const newLineNumberA = a.newLine ? 0 : 1;
         const newLineNumberB = b.newLine ? 0 : 1;
         if (newLineNumberA < newLineNumberB) {
@@ -940,9 +867,7 @@ export default {
       this.savingInventory = true;
       this.sortInventoryLines()
 
-      // console.log({ inventoryLines: this.inventoryLines })
-
-      for(const line of this.inventoryLines) {
+      for (const line of this.inventoryLines) {
         if (!line.spoilDirty && !line.resupplyDirty && line.setArchive !== 1 && line.newLine !== true) {
           continue;
         }
@@ -964,7 +889,7 @@ export default {
         }
         try {
           const res = await this.updateEverythingForOneChannel({ input });
-        } catch(e) {
+        } catch (e) {
           const err = {
             msg: `Could not update channel ${line.channel}, please make sure you have Internet connection and try again. (${e.message})`,
             err: e
@@ -976,7 +901,7 @@ export default {
           this.refetch()
           return false;
         }
-        this.logInventoryAction('SaveInventory',JSON.stringify(input));
+        this.logInventoryAction('SaveInventory', JSON.stringify(input));
         this.savingChannel = 0;
       }
 
@@ -996,19 +921,23 @@ export default {
   flex-wrap: wrap;
   margin-bottom: 1rem;
 }
+
 .inventory-row:nth-of-type(odd) {
-  background-color: #c8e6c9!important
+  background-color: #c8e6c9 !important
 }
+
 .inventory-channel {
   flex: 1 1 10%;
   padding: 0.5rem;
   box-sizing: border-box;
 }
+
 .inventory-item {
   flex: 1 1 25%;
   padding: 0.5rem;
   box-sizing: border-box;
 }
+
 .overlay {
   position: fixed;
   top: 0;
@@ -1027,18 +956,22 @@ export default {
   color: white;
 }
 
-.header-row, .data-row {
+.header-row,
+.data-row {
   display: flex;
   flex-wrap: wrap;
   width: 100%;
   margin-bottom: 1rem;
 }
 
-.header-item, .data-item {
-  flex: 1 1 25%; /* Adjusted to fit 4 columns */
+.header-item,
+.data-item {
+  flex: 1 1 25%;
+  /* Adjusted to fit 4 columns */
   padding: 0.5rem;
   box-sizing: border-box;
 }
+
 .header-item {
   text-align: right;
 }
@@ -1058,9 +991,11 @@ export default {
 .header-row:nth-of-type(odd) {
   background-color: #5d8d5e !important;
 }
+
 .balance-value {
   width: 100%;
 }
+
 .bg-green-1 {
   color: white !important;
   background-color: #1b5e20 !important;
@@ -1070,25 +1005,36 @@ export default {
   .header-row {
     display: none;
   }
-  .header-item:nth-child(n+2), .data-item:nth-child(n+2) {
-    flex: 1 1 100%; /* Wrap after the first item */
+
+  .header-item:nth-child(n+2),
+  .data-item:nth-child(n+2) {
+    flex: 1 1 100%;
+    /* Wrap after the first item */
   }
+
   .data-item {
     display: flex;
   }
+
   .input-label {
     display: inline-block;
-    width: 50%; /* Adjust as needed */
+    width: 50%;
+    /* Adjust as needed */
   }
+
   .q-input {
     font-size: 16px !important;
     display: inline-block;
-    flex: 1 1 50%; /* Make input fields take up 50% of their surrounding div */
+    flex: 1 1 50%;
+    /* Make input fields take up 50% of their surrounding div */
   }
+
   .balance-value {
     display: inline-block;
-    width: 50%; /* Adjust as needed */
+    width: 50%;
+    /* Adjust as needed */
   }
+
   .q-dialog {
     position: fixed;
     top: 0;
