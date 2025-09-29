@@ -739,7 +739,8 @@ export default {
         await openMachineMutate({
           input: {
             machineId: machineId.value,
-            isOpen: true
+            isOpen: true,
+            newFlag: true,
           }
         });
         emit('refetch-machine-info');
@@ -753,7 +754,8 @@ export default {
         await closeMachineMutate({
           input: {
             machineId: machineId.value,
-            isOpen: false
+            isOpen: false,
+            newFlag: true,
           }
         });
         emit('refetch-machine-info');
