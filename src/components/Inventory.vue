@@ -870,7 +870,7 @@ export default {
       this.sortInventoryLines()
 
       for (const line of this.inventoryLines) {
-        if (!line.spoilDirty && !line.resupplyDirty && line.setArchive !== 1 && line.newLine !== true) {
+        if (!line.spoilDirty && !line.resupplyDirty && line.setArchive !== true && line.newLine !== true) {
           continue;
         }
         this.savingChannel = line.channel;
