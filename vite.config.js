@@ -7,7 +7,7 @@ import VueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: process.env.NODE_ENV !== 'development' ? '/driverapp' : '/',
+  base: process.env.NODE_ENV !== 'development' ? '/driverapp-dev' : '/',
   plugins: [
     vue(),
     vueJsx(),
