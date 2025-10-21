@@ -44,6 +44,9 @@
         <div v-for="inventoryLine, index in inventoryLines" :key="inventoryLine.channel" class="inventory-row">
           <div v-if="inventoryLine.groupheader !== ''" class="category-header">
             <b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b>
+            <span class="category-page-label">
+              ADJUSTMENTS
+            </span>
           </div>
           <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="data-row">
             <div class="data-item">
@@ -100,15 +103,18 @@
         <div v-for="inventoryLine, index in inventoryLines" :key="inventoryLine.channel" class="inventory-row">
           <div v-if="inventoryLine.groupheader !== ''" class="category-header">
             <b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b>
+            <span class="category-page-label">
+            INVENTORY
+            </span>
+
           </div>
           <div v-if="inventoryLine.balance > 0 || showEmptyChannels || inventoryLine.newLine" class="data-row">
             <div class="data-item-half">
               <div class="text-bold">
-                <span class="q-mt-2"
-                  :class="{
-                    'text-red text-bold text-strike': inventoryLine.setArchive === true,
-                    'text-red text-bold': inventoryLine.newBalance < 0 && inventoryLine.setArchive !== true
-                  }">
+                <span class="q-mt-2" :class="{
+                  'text-red text-bold text-strike': inventoryLine.setArchive === true,
+                  'text-red text-bold': inventoryLine.newBalance < 0 && inventoryLine.setArchive !== true
+                }">
                   {{ inventoryLine.channel }}.
                   &nbsp;&nbsp;{{ inventoryLine.productName }}</span>
                 <q-btn v-if="inventoryLine.newBalance == 0 && inventoryLine.setArchive === false"
@@ -124,8 +130,7 @@
               <q-input v-model="inventoryLine.newBalance"
                 @update:model-value="value => updateSpoilBalance(value, index)" @focus="selectInput"
                 input-style="text-align: right" type="text" inputmode="numeric" pattern="[0-9]*" hide-bottom-space
-                hide-top-space 
-                :class="{ 'negative-inventory': inventoryLine.newBalance < 0 }" />
+                hide-top-space :class="{ 'negative-inventory': inventoryLine.newBalance < 0 }" />
             </div>
           </div>
         </div>
@@ -160,6 +165,7 @@
           <div v-if="inventoryLine.newLine" class="category-header bg-white text-green"><b>ADDED CHANNEL</b></div>
           <div v-if="inventoryLine.groupheader !== ''" class="category-header">
             <b>{{ inventoryLine.category }} ({{ inventoryLine.origin }})</b>
+            <span class="category-page-label">REFILL</span>
           </div>
           <div class="data-row">
             <div class="data-item">
@@ -329,6 +335,7 @@ const GET_MACHINE_MENU_ITEMS = gql`
       product {
         id
         texts {
+          locale
           name
         }
         origin
@@ -347,6 +354,7 @@ const GET_INVENTORY_QUERY = gql`
         product {
           category
           texts {
+            locale
             name
           }
           origin
@@ -370,6 +378,7 @@ const GET_PRODUCTS_QUERY = gql`
     products {
       id
       texts {
+        locale
         name
       }
       origin
@@ -467,6 +476,18 @@ export default {
       } catch (error) {
         console.error('Failed to log inventory action:', error);
       }
+    };
+    // prefer SE, then EN, otherwise return null so caller can decide "*MISSING*"
+    const getPreferredText = (texts) => {
+      if (!texts || !texts.length) return null;
+      const se = texts.find(t => t && t.locale && String(t.locale).toUpperCase() === 'SE');
+      if (se && se.name) return se.name;
+      const en = texts.find(t => t && t.locale && String(t.locale).toUpperCase() === 'EN');
+      if (en && en.name) return en.name;
+      // fall back to any non-empty name
+      const anyName = texts.find(t => t && t.name);
+      if (anyName && anyName.name) return anyName.name;
+      return null;
     };
     const addChannelInput = () => {
       addChannelError.value = false;
@@ -675,14 +696,7 @@ export default {
 
         const productsSorted = sortedGroups.flatMap(group => group.map((r) => {
           odd = !odd;
-          if (!r.product.texts.length) return false;
-          let productText = r.product.texts[0].name;
-          if (!productText || productText == '') {
-            productText = r.product.texts[1].name;
-          }
-          if (!productText || productText == '') {
-            `${r.product.id} * MISSING *`
-          }
+          const productText = getPreferredText(r.product && r.product.texts ? r.product.texts : []) || '*MISSING*';
           let requestedRefill = 0;
           const totalRefill = requestedRefillMap[r.productId] ?? 0;
           const channelCount = productChannelCount[r.productId] || 1;
@@ -724,13 +738,7 @@ export default {
       if (!loadingMenuItems.value && newMenuItems) {
         menuItemProducts.value = newMenuItems.menuItemsByMachineId.map(m => m.product.id);
         menuItemProductOptions.value = newMenuItems.menuItemsByMachineId.map((m) => {
-          let productText = m.product.texts[0].name;
-          if (!productText || productText == '') {
-            productText = m.product.texts[1].name;
-          }
-          if (!productText || productText == '') {
-            `${m.product.id} * MISSING *`
-          }
+          const productText = getPreferredText(m.product && m.product.texts ? m.product.texts : []) || '*MISSING*';
           return {
             value: m.product.id,
             label: productText,
@@ -1101,5 +1109,29 @@ export default {
     align-items: center;
     z-index: 1000;
   }
+}
+
+.category-header {
+  width: 100%;
+  padding: 0.5rem;
+  background-color: #7db57e;
+  font-weight: bold;
+  margin-bottom: 2px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.category-page-label {
+  display: none;
+}
+
+@media (max-width: 600px) {
+.category-page-label {
+  display: inline-block;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+
 }
 </style>
